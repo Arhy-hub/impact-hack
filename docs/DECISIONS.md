@@ -31,3 +31,17 @@ Every choice made while building Heatwise, and why. Newest at the bottom of each
 | P1 | No secrets in git: keys only through `.env`, which is git-ignored. `.env.example` holds names only. | The repo may become public. |
 | P2 | `*.pptx` and Office lock files are git-ignored | The event deck belongs to the organisers. Don't republish it. |
 | P3 | All data is synthetic. No real household, motion or location data is committed. | Motion data reveals when people are home (privacy risk from the idea doc). |
+
+## Occupancy model (`heatwise/occupancy.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| O1 | Target is "room used within the next hour" (4 steps) | The controller needs to know whether to start heating *now*. An hour covers a typical warm-up time. |
+| O2 | Inputs are sensors only (motion, phones home). Ground-truth occupancy is used only for labels. | A real house only has sensors. A test enforces this: flipping the ground truth must not change predictions. |
+| O3 | The model is a **heatmap prior plus a live-sensor correction** (logistic regression on the heatmap's log-odds, motion lags at 0, 15, 30, 60 and 120 min, motion anywhere, and phones home) | The first attempt, logistic regression on time features alone, lost to the heatmap (Brier 0.035 against 0.033) because the toy routines are very regular. Keeping the heatmap as a prior and learning only the correction fixed that: Brier **0.025 against 0.033** (24% lower) on an unseen week. It's also easy to explain: "the routine, adjusted for what the sensors see right now". |
+| O4 | Cross-fitting: training data split in two, each half's heatmap feature comes from the other half | Stops the model seeing its own labels through the heatmap feature (leakage), which would make it trust the prior too much. |
+| O5 | Logistic regression, not LightGBM | Fast, has no extra dependency, and research suggests it's strong within a single home (arXiv 2604.14841). LightGBM stays a stretch goal. |
+| O6 | Time-based split: train on 5 weeks, test on the following week with a new random seed | A random split would leak routines across days and flatter the model. |
+| O7 | Laplace smoothing on the heatmap (an unseen cell = 0.5) | Avoids 0 and 1 probabilities, which break the log-odds feature. |
+
+**Results (seed 0, 35 training days, 7 test days):** heatmap Brier 0.0327 / AUC 0.9947; model Brier 0.0250 / AUC 0.9949. AUC is near 1 for both because the toy routines are regular. Real homes will be noisier, so judge on Brier.
