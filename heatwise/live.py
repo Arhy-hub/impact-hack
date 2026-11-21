@@ -46,7 +46,8 @@ DISPLAY = {"living": "living room"}  # how rooms are named in sentences
 
 # Extra reason codes for overrides, on top of the controller's own.
 CAL_AWAY, CAL_RETURN, CAL_WFH, CAL_GUESTS = "cal_away", "cal_return", "cal_wfh", "cal_guests"
-MANUAL_AWAY, NO_CREDIT = "manual_away", "no_credit"
+MANUAL_AWAY, NO_CREDIT, DAILY_LIMIT = "manual_away", "no_credit", "daily_limit"
+EVENT_KINDS = {"away", "wfh", "guests", None}
 
 
 def this_monday(today: date | None = None) -> date:
@@ -144,6 +145,20 @@ class LiveHome:
         self.auto_trim = 0.0
         self.cost_log: list[float] = []  # pence per step since start
         self.last_kwh = np.zeros(len(self.rooms))
+        # Per-step history for the charts (NaN until a step has happened).
+        n = len(self.rooms)
+        self.hist_temp = np.full((WEEK_STEPS, n), np.nan)
+        self.hist_target = np.full((WEEK_STEPS, n), np.nan)
+        self.spend_p = np.zeros(WEEK_STEPS)
+        self.co2_g = np.zeros(WEEK_STEPS)
+        self.kwh = np.zeros(WEEK_STEPS)
+        # Limits: the weekly budget is budget_gbp; the daily cap is off until set.
+        self.daily_cap_gbp: float | None = None
+        self.extra_allowed_p: dict[int, float] = {}
+        # What happened, in plain words, for the demo feed (Luke narrates it).
+        self.log: list[dict] = []
+        self._last_why: list[str] = []
+        self._timer = run_week("timer", self.occ, self.signals, settings=settings)
         self.targets, self.reasons = self._decide(self.t)
 
     # ---------- decisions ----------
@@ -212,7 +227,85 @@ class LiveHome:
             targets[:] = s.away
             for r in reasons:
                 r.update(why=NO_CREDIT, mods=[])
+        elif self.daily_limit_hit(t):
+            # Daily cap reached: keep rooms people are in at eco, rest the others.
+            for i, r in enumerate(reasons):
+                in_use = r["why"] not in (ECO, AWAY, CAL_AWAY, MANUAL_AWAY)
+                targets[i] = min(targets[i], s.eco if in_use else s.away)
+                r.update(why=DAILY_LIMIT, mods=[])
         return np.maximum(targets, s.away), reasons
+
+    # ---------- limits ----------
+
+    def day_spend_p(self, t: int) -> float:
+        d = t // STEPS_PER_DAY
+        return float(self.spend_p[d * STEPS_PER_DAY:(d + 1) * STEPS_PER_DAY].sum())
+
+    def daily_limit_hit(self, t: int) -> bool:
+        if self.daily_cap_gbp is None:
+            return False
+        cap = self.daily_cap_gbp * 100 + self.extra_allowed_p.get(t // STEPS_PER_DAY, 0.0)
+        return self.day_spend_p(t) >= cap
+
+    def set_limits(self, weekly_gbp: float | None = None, daily_gbp: float | None = None, daily_off: bool = False) -> None:
+        if weekly_gbp is not None:
+            if not 5 <= weekly_gbp <= 200:
+                raise ValueError("weekly budget must be £5 to £200")
+            extra = weekly_gbp - self.budget_gbp
+            if extra > 0:
+                self.topup(extra)
+            else:
+                self.budget_gbp = float(weekly_gbp)
+        if daily_off:
+            self.daily_cap_gbp = None
+        elif daily_gbp is not None:
+            if not 0.5 <= daily_gbp <= 20:
+                raise ValueError("daily limit must be £0.50 to £20")
+            self.daily_cap_gbp = float(daily_gbp)
+        self.targets, self.reasons = self._decide(self.t)
+
+    def allow_more(self, pounds: float = 2.0) -> None:
+        """The user approves spending a little past today's limit."""
+        d = self.t // STEPS_PER_DAY
+        self.extra_allowed_p[d] = self.extra_allowed_p.get(d, 0.0) + pounds * 100
+        self._say("approve", f"Thanks! I can spend £{pounds:.0f} more today.")
+        self.targets, self.reasons = self._decide(self.t)
+
+    # ---------- mock calendar ----------
+
+    def add_event(self, title: str, kind: str | None, day: int, start_h: float, end_h: float) -> None:
+        """Add an event to the calendar. ``day`` counts from the first day of the week (0-6)."""
+        title = title.strip()[:60]
+        if not title:
+            raise ValueError("give the event a name")
+        if kind not in EVENT_KINDS:
+            raise ValueError("unknown event type")
+        if not (0 <= day <= 6 and 0 <= start_h < 24 and 0 < end_h <= 48 and end_h > start_h):
+            raise ValueError("check the day and times")
+        base = datetime.combine(self.week_start + timedelta(days=day), datetime.min.time())
+        e = cal.Event(title, base + timedelta(hours=start_h), base + timedelta(hours=end_h), kind)
+        self.events = sorted([*self.events, e], key=lambda x: x.start)
+        self._refresh_people()
+        self._say("calendar", f"Added “{title}” to your week.")
+
+    def remove_event(self, index: int) -> None:
+        if not 0 <= index < len(self.events):
+            raise ValueError("no such event")
+        e = self.events.pop(index)
+        self._refresh_people()
+        self._say("calendar", f"Removed “{e.title}”.")
+
+    def _refresh_people(self) -> None:
+        self.occ = simulate_occupancy(7, seed=self.seed + 1000, start_day=self.start_day)
+        apply_calendar_to_people(self.occ, self.events, self.week_start)
+        self.targets, self.reasons = self._decide(self.t)
+
+    # ---------- the feed ----------
+
+    def _say(self, kind: str, text: str, t: int | None = None) -> None:
+        t = self.t if t is None else t
+        self.log.append({"step": int(t), "time": clock(t, self.start_day), "kind": kind, "text": text})
+        del self.log[:-200]
 
     # ---------- actions ----------
 
@@ -241,10 +334,69 @@ class LiveHome:
             q = self.house.heat_needed_kw(self.targets, self.temp_out[s_day])
             self.last_kwh = self.house.step(q, self.temp_out[s_day])
             kwh = float(self.last_kwh.sum())
+            blocks_before = self.wallet.blocks_bought
             self.wallet.pay(t, kwh, float(self.price[s_day]), float(self.carbon[s_day]))
-            self.cost_log.append(kwh * float(self.price[s_day]))
+            cost = kwh * float(self.price[s_day])
+            self.cost_log.append(cost)
+            self.hist_temp[t], self.hist_target[t] = self.house.state.temps, self.targets
+            self.spend_p[t], self.co2_g[t], self.kwh[t] = cost, kwh * float(self.carbon[s_day]), kwh
+            self._narrate(t, self.wallet.blocks_bought - blocks_before)
             self.t += 1
         self.targets, self.reasons = self._decide(self.t)
+
+    def _narrate(self, t: int, blocks: int) -> None:
+        """Turn what just happened into Luke's first-person feed."""
+        for e in self.events:
+            if cal.step_of(e.start, self.week_start) == t:
+                self._say("calendar", f"“{e.title}” is starting. " + {
+                    "away": "I've set the house to away.", "wfh": "Keeping the living room warm for you.",
+                    "guests": "Warming the living room and kitchen for your guests.", None: "No change to the heating."}[e.kind], t)
+        whys = [r["why"] for r in self.reasons]
+        if self._last_why:
+            for i, (old, new) in enumerate(zip(self._last_why, whys)):
+                if old != new:
+                    name = DISPLAY.get(self.names[i], self.names[i])
+                    text = {EXPECTED: f"Warming the {name}. Someone usually comes in soon.",
+                            IN_USE: f"Someone's in the {name}, keeping it cosy.",
+                            ECO: f"Letting the {name} rest, nobody's expected.",
+                            AWAY: f"Nobody's home, so the {name} is resting.",
+                            CAL_RETURN: f"Warming the {name} before you get back.",
+                            DAILY_LIMIT: f"Today's limit is reached, so I'm keeping the {name} gentle."}.get(new)
+                    if text:
+                        self._say("room", text, t)
+        if self.daily_limit_hit(t) and DAILY_LIMIT not in self._last_why and DAILY_LIMIT in whys:
+            self._say("limit", "You've hit today's spending limit. Shall I spend £2 more to keep you comfortable?", t)
+        self._last_why = whys
+        self._bought_p = getattr(self, "_bought_p", 0) + blocks * self.supplier.block_pence
+        if t % 4 == 3 and self._bought_p:  # one line per hour, not every 15 minutes
+            left = self.supplier.balance_blocks(CUSTOMER) * self.supplier.block_pence / 100 if isinstance(self.supplier, LocalSupplier) else None
+            self._say("buy", f"Paid {self._bought_p:.0f}p for heat this hour" + (f". £{left:.2f} left this week." if left is not None else "."), t)
+            self._bought_p = 0
+
+    def impact(self) -> dict:
+        """Heatwise so far vs an ordinary timer over the same steps (same people, prices, weather)."""
+        start, end = self.start_step if not self.realtime else 0, self.t
+        if end <= start:
+            return {"ready": False}
+        tk = self._timer.kwh_per_step[start:end].sum(axis=1)
+        prices = np.array([self.price[i % STEPS_PER_DAY] for i in range(start, end)])
+        carbons = np.array([self.carbon[i % STEPS_PER_DAY] for i in range(start, end)])
+        timer_p, timer_g = float(tk @ prices), float(tk @ carbons)
+        hw_p, hw_g = float(self.spend_p[start:end].sum()), float(self.co2_g[start:end].sum())
+        cheap = np.array([self.day_scores[i % STEPS_PER_DAY] <= np.quantile(self.day_scores, 0.5) for i in range(start, end)])
+        kwh = self.kwh[start:end]
+        days = []
+        for d in range(7):
+            a, b = max(d * STEPS_PER_DAY, start), min((d + 1) * STEPS_PER_DAY, end)
+            if b > a:
+                dk = self._timer.kwh_per_step[a:b].sum(axis=1)
+                dc = np.array([self.carbon[i % STEPS_PER_DAY] for i in range(a, b)])
+                days.append({"day": clock(d * STEPS_PER_DAY, self.start_day)[:3],
+                             "heatwise_kg": round(float(self.co2_g[a:b].sum()) / 1000, 2),
+                             "timer_kg": round(float(dk @ dc) / 1000, 2)})
+        return {"ready": True, "saved_gbp": round((timer_p - hw_p) / 100, 2), "saved_kg": round((timer_g - hw_g) / 1000, 2),
+                "heatwise_kg": round(hw_g / 1000, 2), "timer_kg": round(timer_g / 1000, 2),
+                "clean_share": round(float(kwh[cheap].sum() / kwh.sum()) * 100) if kwh.sum() > 0 else 0, "days": days}
 
     def room_index(self, name: str) -> int:
         if name not in self.names:
@@ -317,6 +469,7 @@ class LiveHome:
             CAL_WFH: ("WFH", f"Your calendar says you're working from home, so the {name} is kept comfortable."),
             CAL_GUESTS: ("Guests", f"Guests are coming ({r.get('event', '')}), so the {name} is kept comfortable."),
             MANUAL_AWAY: ("Away mode", "Away mode is on, so the house is on frost protection."),
+            DAILY_LIMIT: ("Daily limit", "Today's spending limit is reached, so it's kept gentle until you allow a bit more."),
             NO_CREDIT: ("No credit", "Out of credit: safety heating only until you top up."),
         }[why]
         extra = []
@@ -405,6 +558,17 @@ class LiveHome:
                             "now": start <= self.t < end})
         return out
 
+    def room_history(self) -> dict:
+        """Last 24 h (hourly) of actual and target temperature per room, for the line chart."""
+        end = min(self.t, WEEK_STEPS)
+        start = max(end - STEPS_PER_DAY, 0)
+        hours = list(range(start, end, 4))
+        out = {"labels": [clock(t, self.start_day)[4:] for t in hours]}
+        for i, name in enumerate(self.names):
+            out[name] = {"temp": [None if np.isnan(self.hist_temp[t, i]) else round(float(self.hist_temp[t, i]), 1) for t in hours],
+                         "target": [None if np.isnan(self.hist_target[t, i]) else round(float(self.hist_target[t, i]), 1) for t in hours]}
+        return out
+
     def budget(self) -> dict:
         spent = (self.wallet.spent_pence + self.wallet.emergency_pence) / 100
         projected = self._projected_p() / 100
@@ -464,6 +628,18 @@ class LiveHome:
                          "upcoming": self.upcoming_events(),
                          "now": cal.hints(self.events, t, self.week_start)["events"]},
             "comfort_c": self.settings.comfort,
+            "events": [{"index": i, **e.to_json(), "day": clock(cal.step_of(e.start, self.week_start), self.start_day)[:3],
+                        "start_label": clock(cal.step_of(e.start, self.week_start), self.start_day)}
+                       for i, e in enumerate(self.events)],
+            "log": self.log[-30:],
+            "impact": self.impact(),
+            "limits": {"weekly_gbp": self.budget_gbp, "daily_gbp": self.daily_cap_gbp,
+                       "today_spent_gbp": round(self.day_spend_p(min(self.t, WEEK_STEPS - 1)) / 100, 2),
+                       "daily_hit": self.daily_limit_hit(min(self.t, WEEK_STEPS - 1)), "floor_c": self.settings.away},
+            "days": [{"day": clock(d * STEPS_PER_DAY, self.start_day)[:3],
+                      "spent_gbp": round(float(self.spend_p[d * STEPS_PER_DAY:(d + 1) * STEPS_PER_DAY].sum()) / 100, 2),
+                      "today": d == min(self.t, WEEK_STEPS - 1) // STEPS_PER_DAY} for d in range(7)],
+            "history": self.room_history(),
             "finished": self.finished,
         }
 

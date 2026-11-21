@@ -86,13 +86,32 @@ def default_home() -> LiveHome:
     except ValueError:
         budget = 30.0
     budget = min(max(budget, 1.0), MAX_TOPUP_GBP)
-    mode = os.environ.get("HEATWISE_MODE", "realtime")
+    mode = os.environ.get("HEATWISE_MODE", "simulated")  # the example week is the demo default
     if mode == "realtime":
         try:
             return LiveHome(budget_gbp=budget, realtime=True)
         except Exception:  # noqa: BLE001 - anything wrong with live mode: use the simulated week
             pass
     return LiveHome(budget_gbp=budget)
+
+
+class NewEvent(BaseModel):
+    title: str = Field(min_length=1, max_length=60)
+    kind: str | None = Field(None, pattern=r"^(away|wfh|guests)$")
+    day: int = Field(ge=0, le=6)
+    start_h: float = Field(ge=0, lt=24)
+    end_h: float = Field(gt=0, le=48)
+
+
+class Limits(BaseModel):
+    weekly_gbp: float | None = Field(None, ge=5, le=200)
+    daily_gbp: float | None = Field(None, ge=0.5, le=20)
+    daily_off: bool = False
+
+
+class Jump(BaseModel):
+    day: int = Field(ge=0, le=6)
+    hour: int = Field(ge=0, le=23)
 
 
 class Mode(BaseModel):
@@ -190,6 +209,39 @@ def create_app(home_factory=default_home) -> FastAPI:
                 holder["home"] = LiveHome(budget_gbp=home.budget_gbp, realtime=body.mode == "realtime")
             except Exception:  # noqa: BLE001 - fall back to the simulated week
                 holder["home"] = LiveHome(budget_gbp=home.budget_gbp)
+        return act(lambda h: None)
+
+    @app.post("/api/events")
+    def add_event(body: NewEvent):
+        return act(lambda h: h.add_event(body.title, body.kind, body.day, body.start_h, body.end_h))
+
+    @app.delete("/api/events/{index}")
+    def remove_event(index: int):
+        return act(lambda h: h.remove_event(index))
+
+    @app.post("/api/limits")
+    def limits(body: Limits):
+        return act(lambda h: h.set_limits(body.weekly_gbp, body.daily_gbp, body.daily_off))
+
+    @app.post("/api/allow")
+    def allow():
+        return act(lambda h: h.allow_more(2.0))
+
+    @app.post("/api/jump")
+    def jump(body: Jump):
+        """Restart the example week (keeping calendar, limits and comfort) and fast-forward to day/hour."""
+        with lock:
+            old = holder["home"]
+            if old.realtime:
+                raise HTTPException(422, "Jumping only works in the example week.")
+            new = LiveHome(budget_gbp=old.budget_gbp, settings=old.settings)
+            new.events = list(old.events)
+            new._refresh_people()
+            new.daily_cap_gbp, new.away_manual, new.manual_trim = old.daily_cap_gbp, old.away_manual, old.manual_trim
+            target = body.day * 96 + body.hour * 4
+            if target > new.t:
+                new.tick(target - new.t)
+            holder["home"] = new
         return act(lambda h: None)
 
     @app.post("/api/reset")

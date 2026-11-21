@@ -86,3 +86,14 @@ def test_mode_switch(client):
     assert client.post("/api/mode", json={"mode": "realtime"}).json()["mode"] == "realtime"
     assert client.post("/api/mode", json={"mode": "simulated"}).json()["mode"] == "simulated"
     assert client.post("/api/mode", json={"mode": "chaos"}).status_code == 422
+
+
+def test_events_limits_jump(client):
+    s = client.post("/api/events", json={"title": "Friends over", "kind": "guests", "day": 5, "start_h": 19, "end_h": 23}).json()
+    assert any(e["title"] == "Friends over" for e in s["events"])
+    assert client.post("/api/events", json={"title": "x", "kind": "party", "day": 1, "start_h": 9, "end_h": 10}).status_code == 422
+    assert client.delete("/api/events/0").status_code == 200
+    assert client.post("/api/limits", json={"daily_gbp": 2}).json()["limits"]["daily_gbp"] == 2
+    assert client.post("/api/allow").status_code == 200
+    s = client.post("/api/jump", json={"day": 3, "hour": 12}).json()
+    assert s["clock"] == "Thu 12:00" and s["limits"]["daily_gbp"] == 2

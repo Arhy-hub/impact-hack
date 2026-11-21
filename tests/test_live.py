@@ -113,3 +113,23 @@ def test_realtime_mode_starts_now_with_generated_calendar(monkeypatch):
     assert [e["title"] for e in s["calendar"]["upcoming"]][:2] == ["Gym", "WFH"]
     home.sync()  # never goes backwards
     assert home.t >= now_step(home.week_start)
+
+
+def test_events_limits_log_impact(home):
+    n = len(home.events)
+    home.add_event("Friends over", "guests", 5, 19, 23)
+    assert len(home.events) == n + 1
+    with pytest.raises(ValueError):
+        home.add_event("", None, 1, 9, 10)
+    with pytest.raises(ValueError):
+        home.add_event("Bad", "party", 1, 9, 10)
+    home.remove_event(0)
+    assert len(home.events) == n
+    home.set_limits(daily_gbp=1.0)
+    home.tick(40)
+    assert any(l["kind"] == "limit" for l in home.log)
+    assert any(l["kind"] == "buy" for l in home.log)
+    imp = home.state()["impact"]
+    assert imp["ready"] and imp["timer_kg"] > 0
+    with pytest.raises(ValueError):
+        home.set_limits(daily_gbp=100)
