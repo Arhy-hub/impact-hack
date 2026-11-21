@@ -226,6 +226,20 @@ button, input { font: inherit; color: inherit; }
 .house .roof { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
 .house .flame { fill: var(--accent); }
 .house .person { fill: var(--ink); }
+.house .person.p0, .who.p0 { fill: var(--accent); background: var(--accent); }
+.house .person.p1, .who.p1 { fill: #3f8fd0; background: #3f8fd0; }
+.house .person.guest { fill: var(--muted); }
+.house .person-name { font: 700 9px var(--text); }
+/* Routine panel (D23) */
+.who { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.routine-line { margin: 8px 0 0; line-height: 1.45; }
+.routine .visit { display: flex; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.routine .visit:first-child { border-top: 0; }
+.routine .visit.later { opacity: .6; }
+.routine .visit.now { background: var(--accent-soft); margin: 0 -10px; padding: 9px 10px; border-radius: 10px; }
+.visit-time { flex: none; width: 104px; font: 600 .8125rem var(--text); color: var(--muted); }
+.visit-who { font-weight: 700; }
+.now-tag { display: block; color: var(--accent); font-weight: 700; }
 
 /* Presenting on a laptop: simulation panel beside the phone app */
 .sim { display: none; }

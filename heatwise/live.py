@@ -35,7 +35,9 @@ from .controller import (
 )
 from .occupancy import HeatmapBaseline, OccupancyModel
 from .signals import get_signals
-from .sim import DAY_NAMES, DEFAULT_ROOMS, STEPS_PER_DAY, House, simulate_occupancy
+from .sim import (
+    DAY_NAMES, DEFAULT_ROOMS, STEPS_PER_DAY, WEEKDAY_ROUTINES, WEEKEND_ROUTINES, House, simulate_occupancy,
+)
 from .supplier import LocalSupplier, make_supplier
 from .wallet import Wallet
 
@@ -78,10 +80,17 @@ def apply_calendar_to_people(occ, events, week_start: date) -> None:
             occ.occupied[t] = False
             occ.motion[t] = False
             occ.people_home[t] = 0
+            for where in (occ.who or {}).values():
+                where[t] = -1
         elif h["wfh"] or h["guests"]:
             occ.occupied[t, living] = True
             occ.motion[t, living] = True
             occ.people_home[t] = max(occ.people_home[t], 1)
+            # Working from home: the first person who'd be out stays in the living room.
+            if h["wfh"] and occ.who and not any(w[t] == living for w in occ.who.values()):
+                out = [w for w in occ.who.values() if w[t] < 0]
+                if out:
+                    out[0][t] = living
 
 
 class LiveHome:
@@ -616,6 +625,54 @@ class LiveHome:
             "co2_kg": round(sum(r.carbon_g for r in self.wallet.receipts) / 1000, 2),
         }
 
+    # ---------- people and routine (for the simulation panel) ----------
+
+    def people(self, t: int) -> list[dict]:
+        """Where each simulated person is at step ``t`` (room name, or None if out)."""
+        who = self.occ.who or {}
+        return [{"name": name, "room": self.names[w[t]] if w[t] >= 0 else None} for name, w in who.items()]
+
+    def routine(self, t: int) -> dict:
+        """Today's routine, and how the heating responded, so it can be checked by eye.
+
+        ``pattern``: the usual timetable for this kind of day (before the random
+        shifts). ``today``: what each person actually did today in the simulation,
+        each visit with when its room started being held at that temperature, the
+        temperature on arrival, and the target (past and current visits only).
+        """
+        day0 = (t // STEPS_PER_DAY) * STEPS_PER_DAY
+        weekend = self.occ.weekday(day0) >= 5
+        hhmm = lambda step: f"{(step % STEPS_PER_DAY) // 4:02d}:{(step % 4) * 15:02d}" if step < day0 + STEPS_PER_DAY else "24:00"
+        hour = lambda x: f"{int(x):02d}:{int(round((x % 1) * 60)):02d}"
+        routines = WEEKEND_ROUTINES if weekend else WEEKDAY_ROUTINES
+        pattern = {name: [{"start": hour(a), "end": hour(b), "room": room} for a, b, room in blocks]
+                   for name, blocks in routines.items()}
+        today = []
+        for name, w in (self.occ.who or {}).items():
+            day = w[day0:day0 + STEPS_PER_DAY]
+            k = 0
+            while k < len(day):
+                j = k
+                while j < len(day) and day[j] == day[k]:
+                    j += 1
+                s, e, ri = day0 + k, day0 + j, int(day[k])
+                visit = {"person": name, "room": self.names[ri] if ri >= 0 else None,
+                         "start": hhmm(s), "end": hhmm(e), "when": "later" if s > t else "now" if e > t else "done"}
+                if ri >= 0 and s <= t and np.isfinite(self.hist_target[s, ri]):
+                    goal = float(self.hist_target[s, ri])
+                    b = s
+                    while b - 1 >= max(0, s - 24) and np.isfinite(self.hist_target[b - 1, ri]) \
+                            and self.hist_target[b - 1, ri] >= goal - 0.25:
+                        b -= 1
+                    temp = float(self.hist_temp[s, ri])
+                    visit.update(target=round(goal, 1), temp=round(temp, 1), held_from=hhmm(b) if b < s else None,
+                                 since_before=b <= s - 24, warm=temp >= goal - 0.5)
+                today.append(visit)
+                k = j
+        today.sort(key=lambda v: (v["start"], v["person"]))
+        return {"day": "weekend" if weekend else "weekday", "jitter_min": 30, "wfh_chance": 0.15,
+                "pattern": pattern, "today": today}
+
     def _step_fraction(self) -> float:
         """Real-time mode: how far (0 to 1) the real clock is into the current 15-minute step."""
         if not self.realtime or self.finished:
@@ -680,6 +737,8 @@ class LiveHome:
             "signals_source": self.signals.source,
             "away": self.away_manual,
             "rooms": rooms,
+            "people": self.people(t),
+            "routine": self.routine(t),
             "budget": self.budget(),
             "plan": self.plan(),
             "tips": self.tips(),

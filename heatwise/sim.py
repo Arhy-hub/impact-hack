@@ -78,6 +78,9 @@ class Occupancy:
     motion: np.ndarray  # bool, what the motion sensor saw
     people_home: np.ndarray  # int, phones on the home Wi-Fi
     start_day: int = 0  # weekday index of step 0 (0 = Monday)
+    # Simulated ground truth per person: room index each step, -1 = out. Only for
+    # showing people in the app; the controller and the model never read it.
+    who: dict[str, np.ndarray] | None = None
 
     @property
     def n_steps(self) -> int:
@@ -116,6 +119,8 @@ def simulate_occupancy(
     n = n_days * STEPS_PER_DAY
     occupied = np.zeros((n, len(rooms)), dtype=bool)
     people_home = np.zeros(n, dtype=int)
+    names = list(WEEKDAY_ROUTINES)
+    who = {name: np.full(n, -1, dtype=int) for name in names}
 
     for d in range(n_days):
         weekday = (start_day + d) % 7
@@ -132,6 +137,7 @@ def simulate_occupancy(
                 where[s:e] = idx[room]
             if weekday < 5 and rng.random() < wfh_prob:
                 where[_to_step(9):_to_step(17)] = idx["living"]
+            who[person][base:base + STEPS_PER_DAY] = where
             for t in range(STEPS_PER_DAY):
                 if where[t] >= 0:
                     occupied[base + t, where[t]] = True
@@ -140,7 +146,7 @@ def simulate_occupancy(
     detect = rng.random(occupied.shape) < motion_detect_prob
     false_fire = rng.random(occupied.shape) < false_motion_prob
     motion = (occupied & detect) | (~occupied & false_fire)
-    return Occupancy(rooms, occupied, motion, people_home, start_day)
+    return Occupancy(rooms, occupied, motion, people_home, start_day, who)
 
 
 @dataclass

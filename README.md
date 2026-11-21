@@ -65,7 +65,7 @@ More in [docs/screenshots](docs/screenshots) (dark mode, Schedule, Settings). Re
 
 Start the app (`uvicorn heatwise.app:app --port 8010`) and open http://127.0.0.1:8010.
 
-1. **Demo tab:** show this week's calendar (gym, working from home, a trip, friends over). Add one, e.g. "Friends over, Sat 7pm".
+1. **Demo tab (or the Simulation panel on a laptop screen):** the house drawing shows Alex and Sam in their rooms, and **The routine / Today, step by step** shows their timetable next to what Heatwise did (✓ = the room was warm when they arrived). Show this week's calendar (gym, working from home, a trip, friends over). Add one, e.g. "Friends over, Sat 7pm".
 2. **Budget → Your limits:** set a **daily limit** of £3 or £4.
 3. **Demo → Play the week.** Read out Luke's notes: rooms warming before people get home, heat bought each hour, the trip putting the house on away.
 4. When the daily limit is hit, Luke asks **"Allow £2 more?"** (on Home and Budget). Tap **Allow**: that's the SolvaPay approval moment.
