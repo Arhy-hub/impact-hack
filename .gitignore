@@ -5,3 +5,9 @@ node_modules/
 __pycache__/
 .venv/
 .DS_Store
+# Never publish: decks, Office lock files, local data dumps, secrets
+*.pptx
+~$*
+data/*.local.json
+*.pem
+*.key

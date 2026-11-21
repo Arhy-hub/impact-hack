@@ -1,0 +1,9 @@
+numpy
+pandas
+scikit-learn
+fastapi
+uvicorn
+httpx
+python-dotenv
+solvapay
+pytest
