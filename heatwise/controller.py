@@ -29,8 +29,8 @@ from .sim import STEPS_PER_DAY
 
 @dataclass(frozen=True)
 class Settings:
-    comfort: float = 20.0
-    sleep: float = 17.0  # bedroom comfort overnight
+    comfort: float = 21.0  # UK living-room norm (DECISIONS D24)
+    sleep: float = 18.0  # bedroom comfort overnight
     sleep_hours: tuple[float, float] = (23.0, 7.0)
     sleep_room: int = 0  # index of the bedroom in the house's rooms
     night_setback: float = 16.0  # timer baseline overnight

@@ -57,7 +57,7 @@ export function render({ state, loading, error }) {
     card(
       h("div", { class: "line" }, h("span", {}, "Comfy temperature"),
         stepper(state.comfort_c, { min: 16, max: 23, step: 0.5, onChange: v => api.comfort(v), label: "comfy temperature", format: v => `${v}°` })),
-      note("Used in rooms you're in. Bedrooms cool to 17° overnight for better sleep.")),
+      note("Used in rooms you're in. Bedrooms cool to 18° overnight for better sleep.")),
     heading("Demo mode"),
     card(
       seg([{ id: "simulated", label: "Example week" }, { id: "realtime", label: "Live" }], state.mode,

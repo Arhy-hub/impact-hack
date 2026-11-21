@@ -154,7 +154,7 @@ class HouseState:
     temps: np.ndarray  # °C per room
 
     @classmethod
-    def initial(cls, rooms=DEFAULT_ROOMS, temp: float = 17.0) -> "HouseState":
+    def initial(cls, rooms=DEFAULT_ROOMS, temp: float = 18.0) -> "HouseState":
         return cls(np.full(len(rooms), temp, dtype=float))
 
 

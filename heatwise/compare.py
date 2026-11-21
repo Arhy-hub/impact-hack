@@ -52,7 +52,7 @@ def run_week(
     wallet=None,
     budget_gbp: float | None = None,
     settings: Settings = Settings(),
-    start_temp: float = 17.0,
+    start_temp: float = 18.0,
     comfort_tolerance: float = 1.0,
 ) -> WeekResult:
     """Simulate ``occ.n_steps`` steps with ``strategy`` in {"heatwise", "timer"}.

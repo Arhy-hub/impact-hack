@@ -81,11 +81,11 @@ class TopUp(BaseModel):
 
 
 def default_home() -> LiveHome:
-    """The demo household. ``HEATWISE_BUDGET`` (£/week, default 30) sets the loaded budget."""
+    """The demo household. ``HEATWISE_BUDGET`` (£/week, default 45) sets the loaded budget."""
     try:
-        budget = float(os.environ.get("HEATWISE_BUDGET", "30"))
+        budget = float(os.environ.get("HEATWISE_BUDGET", "45"))
     except ValueError:
-        budget = 30.0
+        budget = 45.0
     budget = min(max(budget, 1.0), MAX_TOPUP_GBP)
     mode = os.environ.get("HEATWISE_MODE", "simulated")  # the example week is the demo default
     if mode == "realtime":
