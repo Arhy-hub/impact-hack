@@ -64,3 +64,5 @@ if (params.get("room")) nav.stacks[nav.tab].push({ screen: "room", arg: params.g
 subscribe(() => { const y = window.scrollY; draw(); window.scrollTo(0, y); });
 draw();
 api.load();
+// Live mode: refresh every 30 s so the clock, temperatures and plan keep moving.
+setInterval(() => { if (store.state?.mode === "realtime" && !document.hidden) api.load(); }, 30_000);

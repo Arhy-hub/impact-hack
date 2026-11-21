@@ -27,7 +27,9 @@ export function render({ state, loading, error }, nav) {
   const clean = s.carbon_g < 180;
   return [
     h("div", { class: "top" },
-      h("div", {}, h("h1", { class: "hello" }, greeting(s.clock)), h("div", { class: "date" }, `${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
+      h("div", {}, h("h1", { class: "hello" }, greeting(s.clock)), h("div", { class: "date" }, s.mode === "realtime"
+        ? `Live · updated ${new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" })}`
+        : `Example week · ${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
       toggle(s.away, on => api.away(on), "Away")),
     h("section", { class: "hero", "aria-label": `Inside ${deg(avg)}. ${sentence(s)}` },
       h("div", { class: "label" }, "Inside right now"),
