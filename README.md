@@ -63,6 +63,8 @@ pytest                         # all tests (offline, no keys needed)
 
 More in [docs/screenshots](docs/screenshots) (dark mode, Schedule, Settings). Regenerate with `python tools/screenshots.py` while the app is running.
 
+**Pitch deck:** [`pitch/`](pitch/README.md). Open `pitch/index.html` to present it; the sources for every statistic are listed there.
+
 ## Demo script (2 minutes)
 
 Start the app (`uvicorn heatwise.app:app --port 8010`) and open http://127.0.0.1:8010.
@@ -134,6 +136,7 @@ heatwise/
   compare.py     run a week, score cost / CO2 / comfort
   compare_timers.py  Heatwise vs timers that keep people warm, 3 and 5 rooms
   run_toy.py     the end-to-end toy run; writes web/data.json
+pitch/           pitch deck: slide sources, build.py, generated index.html
 web/             analyst results page for judges (index.html + generated data.json)
 data/            saved signals snapshot for offline runs
 tests/           pytest suite (offline)

@@ -1,0 +1,68 @@
+<section id="beforeafter" class="dark">
+<h2>Heat follows people</h2>
+<p class="legend">Blue: cool or eco · Orange to red: heated</p>
+<x-embed style="position:absolute;left:128px;top:250px;width:1664px;height:700px"><!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:transparent}canvas{display:block;width:100%;height:100%}</style></head><body><canvas id="c"></canvas><script>
+var c=document.getElementById('c'),g=c.getContext('2d'),W=1,H=1;
+function rs(){var d=window.devicePixelRatio||1;W=innerWidth||1664;H=innerHeight||700;c.width=Math.round(W*d);c.height=Math.round(H*d);g.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',rs);rs();
+var FH=2.6,FONT='system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+/* rooms: plan x, plan z, width, depth, floor. Kitchen, Hall, Living, Bedroom, Bathroom, Spare room */
+var RM=[[0,0,4,3.5,0],[0,3.5,4,2.5,0],[4,0,4,6,0],[0,0,4,3.5,1],[0,3.5,4,2.5,1],[4,0,4,6,1]];
+var BEFORE=[21,20,22,21,22,21];
+var SC=[
+{t:'06:45  Wake-up',a:[19,17,16,20,22,14],p:[[4,.5,.5],[3,.3,.5],[3,.7,.5]]},
+{t:'07:15  Breakfast',a:[21,18,16,17,18,14],p:[[0,.3,.4],[0,.65,.6],[0,.7,.3]]},
+{t:'12:00  Everyone out',a:[12,12,12,12,12,12],p:[[-1,0,0],[-1,0,0],[-1,0,0]]},
+{t:'18:30  Evening',a:[19,17,21,16,16,14],p:[[2,.35,.35],[2,.65,.6],[0,.5,.5]]},
+{t:'22:30  Bedtime',a:[15,15,17,20,19,14],p:[[3,.35,.5],[3,.65,.5],[4,.5,.5]]}];
+function rp(r,u,v){var m=RM[r];return[m[0]+m[2]*u-4,m[4]*FH,m[1]+m[3]*v-3,1]}
+var POS=[];
+SC.forEach(function(s,si){POS.push(s.p.map(function(q,i){if(q[0]<0){var o=POS[si-1][i];return[o[0],o[1],o[2],0]}return rp(q[0],q[1],q[2])}))});
+var ST=[[12,[64,118,204]],[15,[112,164,226]],[17,[238,204,128]],[19,[246,152,62]],[22,[222,52,30]]];
+function col(t){t=Math.max(12,Math.min(22,t));for(var i=1;i<ST.length;i++){if(t<=ST[i][0]){var a=ST[i-1],b=ST[i],k=(t-a[0])/(b[0]-a[0]);return a[1].map(function(v,j){return Math.round(v+(b[1][j]-v)*k)})}}return ST[ST.length-1][1]}
+function rgba(cl,a){return'rgba('+cl[0]+','+cl[1]+','+cl[2]+','+a.toFixed(3)+')'}
+var yaw=-.6,cp=Math.cos(.5),sp=Math.sin(.5);
+function pr(X,Y,Z,cx,cy,s){var ca=Math.cos(yaw),sa=Math.sin(yaw),x=X*ca-Z*sa,z=X*sa+Z*ca,yy=Y-3.1,y=yy*cp+z*sp,d=-yy*sp+z*cp,f=24/(24+d);return[cx+x*s*f,cy-y*s*f,d]}
+function poly(q,f,st,lw){g.beginPath();g.moveTo(q[0][0],q[0][1]);for(var i=1;i<q.length;i++)g.lineTo(q[i][0],q[i][1]);g.closePath();if(f){g.fillStyle=f;g.fill()}if(st){g.strokeStyle=st;g.lineWidth=lw||1.2;g.stroke()}}
+function glow(p,r,cl,a){var gr=g.createRadialGradient(p[0],p[1],0,p[0],p[1],r);gr.addColorStop(0,rgba(cl,a));gr.addColorStop(1,rgba(cl,0));g.fillStyle=gr;g.beginPath();g.ellipse(p[0],p[1],r,r*.6,0,0,7);g.fill()}
+var FACES=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+function house(cx,cy,s,T,PP){var it=[];
+var sh=pr(0,0,0,cx,cy,s);it.push({d:1e4,f:function(){glow(sh,s*5.4,[250,246,240],.07)}});
+RM.forEach(function(m,i){var e=.06,x0=m[0]-4+e,z0=m[1]-3+e,x1=m[0]+m[2]-4-e,z1=m[1]+m[3]-3-e,y0=m[4]*FH+e,y1=(m[4]+1)*FH-e;
+var V=[[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1]].map(function(p){return pr(p[0],p[1],p[2],cx,cy,s)});
+var cl=col(T[i]),h=Math.max(0,Math.min(1,(T[i]-15)/7));
+FACES.forEach(function(fc,k){var q=fc.map(function(j){return V[j]}),d=(q[0][2]+q[1][2]+q[2][2]+q[3][2])/4;
+it.push({d:k?d:d+.6,f:function(){poly(q,rgba(cl,k==0?.9:k==1?.08:.24),'rgba(250,246,240,.3)')}})});
+var mx=(x0+x1)/2,mz=(z0+z1)/2,cc=pr(mx,y0+.02,mz,cx,cy,s);
+it.push({d:cc[2]+.4,f:function(){if(h>.02)glow(cc,s*(1.4+1.6*h),cl,.6*h)}});
+var lc=pr(mx,y0+2.1,mz,cx,cy,s),lb=Math.round(T[i])+'°';
+it.push({d:-1e4,f:function(){g.font='700 24px '+FONT;g.textAlign='center';g.textBaseline='middle';g.fillStyle='rgba(27,26,36,.6)';g.fillText(lb,lc[0]+1,lc[1]+2);g.fillStyle='#FAF6F0';g.fillText(lb,lc[0],lc[1])}})});
+var r=[[-4.2,5.2,-3.3],[4.2,5.2,-3.3],[4.2,5.2,3.3],[-4.2,5.2,3.3],[-4.2,7.1,0],[4.2,7.1,0]].map(function(p){return pr(p[0],p[1],p[2],cx,cy,s)});
+[[0,1,5,4],[3,2,5,4],[0,3,4],[1,2,5]].forEach(function(fc){var q=fc.map(function(j){return r[j]}),d=q.reduce(function(a,p){return a+p[2]},0)/q.length;it.push({d:d,f:function(){poly(q,'rgba(250,246,240,.05)','rgba(250,246,240,.38)',1.5)}})});
+PP.forEach(function(q){if(q[3]<.02)return;var b=pr(q[0],q[1]+.15,q[2],cx,cy,s),t=pr(q[0],q[1]+1,q[2],cx,cy,s),hd=pr(q[0],q[1]+1.38,q[2],cx,cy,s);
+it.push({d:b[2]-.3,f:function(){g.globalAlpha=q[3];g.strokeStyle='#FAF6F0';g.lineCap='round';g.lineWidth=s*.26;g.beginPath();g.moveTo(b[0],b[1]);g.lineTo(t[0],t[1]);g.stroke();g.fillStyle='#FAF6F0';g.beginPath();g.arc(hd[0],hd[1],s*.16,0,7);g.fill();g.globalAlpha=1}})});
+it.sort(function(a,b){return b.d-a.d});it.forEach(function(o){o.f()})}
+var DUR=3.8,TR=1.2,T0=null;
+function sm(k){return k*k*(3-2*k)}
+function L(a,b,k){return a+(b-a)*k}
+function txt(s,x,y,sz,cl,w){g.font=(w||400)+' '+sz+'px '+FONT;g.textAlign='center';g.textBaseline='alphabetic';g.fillStyle=cl;g.fillText(s,x,y)}
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function heated(T){return T.filter(function(v){return v>=18.5}).length}
+function frame(now){if(T0===null)T0=now;var t=(now-T0)/1000,n=SC.length,si=Math.floor(t/DUR)%n,pi=(si+n-1)%n,k=sm(Math.min(1,(t%DUR)/TR));
+yaw=-.62+.3*Math.sin(t*.32);
+g.clearRect(0,0,W,H);
+var s=Math.min(W/2/12.5,(H-175)/10.7),cy=74+4.9*s;
+var A=SC[si].a.map(function(v,i){return L(SC[pi].a[i],v,k)});
+var PP=POS[si].map(function(q,i){var o=POS[pi][i];return[L(o[0],q[0],k),L(o[1],q[1],k),L(o[2],q[2],k),L(o[3],q[3],k)]});
+house(W*.25,cy,s,BEFORE,PP);house(W*.75,cy,s,A,PP);
+g.strokeStyle='rgba(250,246,240,.14)';g.lineWidth=2;g.beginPath();g.moveTo(W/2,76);g.lineTo(W/2,H-16);g.stroke();
+var lab=SC[si].t;g.font='700 28px '+FONT;var tw=g.measureText(lab).width+56;rr(W/2-tw/2,6,tw,52,26);g.fillStyle='#FAF6F0';g.fill();txt(lab,W/2,42,28,'#1B1A24',700);
+txt('Before: whole house on a timer',W*.25,H-52,30,'#FAF6F0',700);
+txt(heated(BEFORE)+' of 6 rooms heated',W*.25,H-14,24,'#C9C2D6');
+txt('After: Heatwise',W*.75,H-52,30,'#FAF6F0',700);
+txt(heated(A)+' of 6 rooms heated',W*.75,H-14,24,'#C9C2D6');
+requestAnimationFrame(frame)}
+requestAnimationFrame(frame);
+</script></body></html></x-embed>
+<aside>Same house, same three people, same day. On the left, the old way: a timer heats all six rooms, even at midday when everyone is out. On the right, Heatwise: the bathroom is warm for 06:45, the kitchen for breakfast, everything drops to a 12° safety level when the house is empty, and the living room is ready for the evening. The spare room is never used, so it stays cool.</aside>
+</section>
