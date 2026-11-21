@@ -1,6 +1,7 @@
 // App shell: tab bar (TabView), a navigation stack per tab, and rendering from the store.
 import { api, store, subscribe } from "./api.js";
 import { h, icon } from "./ui.js";
+import * as theme from "./theme.js";
 import * as home from "./screens/home.js";
 import * as room from "./screens/room.js";
 import * as budget from "./screens/budget.js";
@@ -17,7 +18,8 @@ const PUSHED = { room };
 
 // Preview helpers for design review: ?theme=dark|light and ?text=xl (largest text size).
 const params = new URLSearchParams(location.search);
-if (params.get("theme")) document.documentElement.dataset.theme = params.get("theme");
+theme.apply(params.get("theme") || theme.saved());
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => theme.apply(params.get("theme") || theme.saved()));
 if (params.get("text") === "xl") document.documentElement.style.fontSize = "160%";
 
 // Each tab keeps its own navigation stack, like a NavigationStack inside each TabView tab.

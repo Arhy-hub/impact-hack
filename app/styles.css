@@ -14,7 +14,8 @@
   --fill: rgba(120, 120, 128, 0.16);
   --pressed: rgba(0, 0, 0, 0.06);
   --bar: rgba(249, 249, 249, 0.82);
-  --tint: #ff9500;          /* the one accent: system orange */
+  --tint: #f04a1d;          /* the one accent: orange-red */
+  --tint-2: #ff8a1f;        /* its warmer end, used only inside gradients */
   --red: #ff3b30;
   /* Text styles (rem so the browser's text size setting scales everything) */
   --large-title: 700 2.125rem/1.2 var(--font);
@@ -31,14 +32,14 @@
     --bg: #000000; --cell: #1c1c1e; --label: #ffffff;
     --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3);
     --separator: rgba(84, 84, 88, 0.6); --fill: rgba(120, 120, 128, 0.32); --pressed: rgba(255, 255, 255, 0.08);
-    --bar: rgba(22, 22, 24, 0.82); --tint: #ff9f0a; --red: #ff453a;
+    --bar: rgba(22, 22, 24, 0.82); --tint: #ff6a3d; --tint-2: #ffa23a; --red: #ff453a;
   }
 }
 :root[data-theme="dark"] {
   --bg: #000000; --cell: #1c1c1e; --label: #ffffff;
   --secondary: rgba(235, 235, 245, 0.6); --tertiary: rgba(235, 235, 245, 0.3);
   --separator: rgba(84, 84, 88, 0.6); --fill: rgba(120, 120, 128, 0.32); --pressed: rgba(255, 255, 255, 0.08);
-  --bar: rgba(22, 22, 24, 0.82); --tint: #ff9f0a; --red: #ff453a;
+  --bar: rgba(22, 22, 24, 0.82); --tint: #ff6a3d; --tint-2: #ffa23a; --red: #ff453a;
 }
 
 * { box-sizing: border-box; }
@@ -74,6 +75,7 @@ button.row:active { background: var(--pressed); }
 .row-main { flex: 1 1 auto; min-width: 0; }
 .row-title { font: var(--body); }
 .row-sub { font: var(--subhead); color: var(--secondary); margin-top: 2px; }
+.row-sub.active { color: var(--tint); }
 .row-value { font: var(--body); color: var(--secondary); font-variant-numeric: tabular-nums; text-align: right;
              flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
 /* Large text: stack the value under the title, as iOS does at accessibility sizes */
@@ -92,17 +94,25 @@ button.row:active { background: var(--pressed); }
 .figure .caption { font: var(--subhead); color: var(--secondary); margin-top: 4px; }
 .progress { height: 6px; border-radius: 3px; background: var(--fill); margin-top: 12px; overflow: hidden; }
 .progress > span { display: block; height: 100%; border-radius: 3px;
-                   background: linear-gradient(90deg, var(--tint), #ff3b1f); }
+                   background: linear-gradient(90deg, var(--tint-2), var(--tint)); }
 
 /* Summary panel: the app's one splash of colour. Black into orange-red, like a Wallet card.
    Always dark with white text, so it reads the same in light and dark mode. */
 .hero { margin: 0 16px 32px; padding: 20px 20px 18px; border-radius: 16px; color: #fff;
-        background: linear-gradient(135deg, #0b0b0c 0%, #1d0c06 38%, #8a2408 72%, #ff4a1c 100%); }
+        background: linear-gradient(135deg, #0b0b0c 0%, #220b04 34%, #a82a0a 70%, #ff5a1f 92%, #ff8a1f 100%); }
 .hero .eyebrow { font: var(--footnote); color: rgba(255, 255, 255, 0.72); }
 .hero .reading { font: 300 3.5rem/1.05 var(--font); letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .hero .detail { font: var(--subhead); color: rgba(255, 255, 255, 0.85); margin-top: 6px; }
 
 /* Controls */
+.segmented { display: flex; flex: 1; background: var(--fill); border-radius: 9px; padding: 2px; gap: 2px; }
+.segmented button { flex: 1; min-height: 32px; border: 0; border-radius: 7px; background: none; color: var(--label);
+                    font: 500 0.8125rem/1 var(--font); cursor: pointer; }
+.segmented button.on { background: var(--cell); box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.08); font-weight: 600; }
+:root[data-theme="dark"] .segmented button.on { background: #636366; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .segmented button.on { background: #636366; } }
+.segmented button:focus-visible { outline: 2px solid var(--tint); outline-offset: 1px; }
+
 .switch { position: relative; width: 51px; height: 31px; flex: none; }
 .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
 .switch span { position: absolute; inset: 0; border-radius: 16px; background: var(--fill); transition: background .2s; }
@@ -145,7 +155,8 @@ button.row:active { background: var(--pressed); }
 .chart svg { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--secondary); font: var(--caption); }
 .chart .bar { fill: var(--fill); }
-.chart .bar.on { fill: var(--tint); }
+.chart .bar.on { fill: url(#heat); }
+.chart .heat-top { stop-color: var(--tint-2); } .chart .heat-bottom { stop-color: var(--tint); }
 .chart .grid { stroke: var(--separator); stroke-width: 0.5; }
 
 /* Content unavailable and loading */

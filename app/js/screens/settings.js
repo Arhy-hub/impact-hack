@@ -1,6 +1,7 @@
 // Settings: connect the calendar and set comfort. A plain form that saves as you go.
 import { api, store } from "../api.js";
-import { action, h, haptic, largeTitle, placeholderSection, row, section, stepper, unavailable } from "../ui.js";
+import * as theme from "../theme.js";
+import { action, h, haptic, largeTitle, placeholderSection, row, section, segmented, stepper, unavailable } from "../ui.js";
 
 export const title = "Settings";
 let calendarMessage = null;  // inline result of the last connect attempt
@@ -54,8 +55,11 @@ export function render({ state, loading, error }) {
   if (error && !state) return unavailable({ iconName: "offline", title: "Can't load settings",
     message: "Check that the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
   const c = state.comfort_c;
+  const appearance = theme.saved();
   return [
     largeTitle(title),
+    section({ header: "Appearance", footer: appearance === "system" ? "Follows your device's light or dark setting." : null },
+      h("div", { class: "row" }, segmented(theme.CHOICES, appearance, choice => { theme.set(choice); api.load(); }, "Appearance"))),
     calendarSection(state),
     section({ header: "Comfort", footer: "Used for rooms that are in use. Bedrooms stay at 17°C overnight." },
       row({ title: "Daytime", value: `${c}°C`,

@@ -17,6 +17,11 @@ function planChart(hours, targets, kinds) {
   const y = t => top + (H - top - bottom) * (1 - (Math.min(hi, Math.max(lo, t)) - lo) / (hi - lo));
   const chart = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
     "aria-label": `Planned temperature for the next 24 hours, heating in ${kinds.filter(k => k === "heat").length} of them` });
+  const defs = svg("defs", {});
+  const grad = svg("linearGradient", { id: "heat", x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.append(svg("stop", { offset: "0", class: "heat-top" }), svg("stop", { offset: "1", class: "heat-bottom" }));
+  defs.append(grad);
+  chart.append(defs);
   for (const t of [12, 17, 22]) chart.append(svg("line", { class: "grid", x1: 0, x2: W, y1: y(t), y2: y(t) }));
   targets.forEach((t, i) => chart.append(svg("rect", {
     class: "bar" + (kinds[i] === "heat" ? " on" : ""), x: i * bw + 1, width: bw - 2,
@@ -38,7 +43,7 @@ export function render({ state }, nav, roomId) {
     hero({ eyebrow: r.heating ? "Heating" : r.status, reading: temp(r.temp), label: `${roomName(r.name)} ${temp(r.temp)}, target ${temp(r.target)}`,
       detail: `Target ${temp(r.target)}` }),
     section({ header: "Why" }, h("div", { class: "text-cell" }, r.why)),
-    section({ header: "Next 24 hours", footer: "Orange hours are when it heats, based on your usual routine and today's electricity prices." },
+    section({ header: "Next 24 hours", footer: "Coloured hours are when it heats, based on your usual routine and today's electricity prices." },
       planChart(p.hours, p.targets[r.name], p.rooms[r.name])),
   ];
 }

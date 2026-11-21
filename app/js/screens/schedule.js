@@ -36,7 +36,7 @@ export function render({ state, loading, error }) {
 
   const out = [largeTitle(title)];
   out.push(heating.length
-    ? section({ header: "Next 24 hours" }, heating.map(r => row({ title: roomName(r.name), sub: `Heating ${span(r)}` })))
+    ? section({ header: "Next 24 hours" }, heating.map(r => row({ title: roomName(r.name), sub: `Heating ${span(r)}`, subActive: true })))
     : section({ header: "Next 24 hours", footer: "Nothing needs heating in the next 24 hours." }, row({ title: "No heating planned" })));
   if (cheap.length) {
     out.push(section({ header: "Cheapest hours", footer: "Good times to run the dishwasher or washing machine." },

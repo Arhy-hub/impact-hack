@@ -75,7 +75,7 @@ Four tabs:
 - **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
 - **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.
 - **Schedule:** which rooms heat when over the next 24 hours, the cheapest hours, and calendar events with what each one does to the heating.
-- **Settings:** connect Google Calendar (secret iCal link), the daytime comfort temperature, and a **Demo** section to move the simulated week along (the home starts on Monday at 16:00).
+- **Settings:** Appearance (System, Light or Dark), connect Google Calendar (secret iCal link), the daytime comfort temperature, and a **Demo** section to move the simulated week along (the home starts on Monday at 16:00).
 
 Design review helpers: add `?theme=dark`, `?theme=light` or `?text=xl` (largest text size) to the URL.
 

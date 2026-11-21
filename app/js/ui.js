@@ -58,10 +58,10 @@ export function section({ header, footer, footerWarning } = {}, ...rows) {
 }
 
 // A row: title, optional subtitle, optional trailing value, optional chevron (navigation).
-export function row({ title, sub, value, strong, onClick, chevron, trailing, label }) {
+export function row({ title, sub, subActive, value, strong, onClick, chevron, trailing, label }) {
   const tag = onClick ? "button" : "div";
   return h(tag, { class: "row", role: onClick ? null : "listitem", onclick: onClick, "aria-label": label },
-    h("div", { class: "row-main" }, h("div", { class: "row-title" }, title), sub ? h("div", { class: "row-sub" }, sub) : null),
+    h("div", { class: "row-main" }, h("div", { class: "row-title" }, title), sub ? h("div", { class: "row-sub" + (subActive ? " active" : "") }, sub) : null),
     value != null ? h("span", { class: "row-value" + (strong ? " strong" : "") }, value) : null,
     trailing || null,
     chevron ? h("span", { class: "chevron" }, icon("chevronRight", 16)) : null);
@@ -85,6 +85,16 @@ export function stepper(value, { min, max, step = 1, onChange, label }) {
     onclick: () => { haptic(); onChange(Math.min(max, Math.max(min, value + delta))); },
   }, icon(name, 18));
   return h("div", { class: "stepper", role: "group", "aria-label": label }, btn("minus", -step, "Decrease"), btn("plus", step, "Increase"));
+}
+
+// Segmented control (Picker with .segmented style).
+export function segmented(options, selected, onChange, label) {
+  return h("div", { class: "segmented", role: "radiogroup", "aria-label": label },
+    options.map(o => h("button", {
+      type: "button", role: "radio", "aria-checked": String(o.id === selected),
+      class: o.id === selected ? "on" : null,
+      onclick: () => { if (o.id !== selected) { haptic(); onChange(o.id); } },
+    }, o.label)));
 }
 
 // ---------- Action sheet (confirmationDialog) ----------

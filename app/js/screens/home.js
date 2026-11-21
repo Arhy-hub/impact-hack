@@ -31,7 +31,7 @@ export function render({ state, loading, error }, nav) {
       row({ title: "Away", trailing: toggle(s.away, on => api.away(on), "Away") })),
     section({ header: "Rooms" },
       s.rooms.map(r => row({
-        title: roomName(r.name), sub: roomStatus(r), value: temp(r.temp), strong: true, chevron: true,
+        title: roomName(r.name), sub: roomStatus(r), subActive: r.heating, value: temp(r.temp), strong: true, chevron: true,
         label: `${roomName(r.name)}, ${temp(r.temp)}, ${roomStatus(r)}`,
         onClick: () => nav.push("room", r.name),
       }))),
