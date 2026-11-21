@@ -40,6 +40,7 @@ python -m heatwise.run_toy --offline   # use the saved price/carbon snapshot
 python -m heatwise.run_toy --budget 3  # see the agent run out of credit and ask for a top-up
 
 python -m http.server -d web 8000      # then open http://localhost:8000
+                                       # "The house, step by step": press Play to watch both houses through the week
 ```
 
 Other entry points:

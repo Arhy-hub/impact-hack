@@ -42,7 +42,18 @@ def test_paid_run_stays_within_budget(report):
 def test_writes_json_for_web_page(report):
     _, out = report
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert set(data) >= {"timer", "heatwise", "heatwise_paid", "series", "ml", "signals"}
+    assert set(data) >= {"timer", "heatwise", "heatwise_paid", "series", "ml", "signals", "week"}
+
+
+def test_week_data_for_floor_plan(report):
+    r, _ = report
+    w = r["week"]
+    n, rooms = len(w["occupied"]), len(r["rooms"])
+    assert n == 7 * 96
+    for key in ("timer", "heatwise"):
+        for field in ("temp", "target", "kwh"):
+            assert len(w[key][field]) == n and len(w[key][field][0]) == rooms
+    assert min(min(row) for row in w["heatwise"]["target"]) >= 12.0  # safety floor visible in the data
 
 
 def test_tiny_budget_triggers_topup_request(tmp_path, monkeypatch):

@@ -114,3 +114,13 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | P5 | **No licence file yet** | Choosing a licence is the team's decision. Without one the code is "all rights reserved" even if the repo is public. Add MIT or Apache-2.0 if you want others to reuse it. |
 | P6 | A secrets and personal-data scan runs over tracked files before publishing (keys, tokens, email addresses) | A final check that nothing private slips in. |
 | P7 | Security issues are reported through private GitHub security advisories | Standard practice for a public repo. |
+
+## Floor plan view (`web/index.html`)
+
+| # | Decision | Why |
+|---|---|---|
+| V1 | Animated SVG floor plan: timer house and Heatwise house side by side, each room coloured from 12°C (blue) to 22°C (red), showing temperature, target, heater kW, and whether someone is in the room. Slider and play button over the whole week. | Makes the controller's choices visible at a glance (an empty bedroom left at 17°C, rooms coasting at the peak), and gives screenshots for the pitch. |
+| V2 | `run_toy` exports the full week per room (`week` in `data.json`), written as compact JSON (about 86 KB) | The page needs every step. Indented JSON would be around 10× larger. |
+| V3 | Running £ and CO₂ totals computed in the browser from kWh and the day's prices | They aren't stored twice, and scrubbing stays instant. |
+| V4 | Hand-drawn SVG with a fixed layout for the 3 toy rooms; rooms not in the layout are skipped | The simplest thing that works. When the MVP adds rooms, extend `LAYOUT`. |
+| V5 | All text set with `textContent`, never `innerHTML` | Safe even if the data file is ever replaced by something untrusted. |

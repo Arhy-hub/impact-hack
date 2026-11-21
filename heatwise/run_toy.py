@@ -76,9 +76,24 @@ def main(argv: list[str] | None = None) -> dict:
             "living_occupied": week.occupied[:192, 2].astype(int).tolist(),
         },
         "receipts": [r.__dict__ for r in wallet.receipts if r.blocks_bought][:50],
+        # Full week, every room, for the animated floor plan. Arrays are [step][room].
+        "week": {
+            "start_day": week.start_day,
+            "occupied": week.occupied.astype(int).tolist(),
+            "people_home": week.people_home.tolist(),
+            **{
+                name: {
+                    "temp": np.round(res.temps, 1).tolist(),
+                    "target": np.round(res.targets, 1).tolist(),
+                    "kwh": np.round(res.kwh_per_step, 4).tolist(),
+                }
+                for name, res in (("timer", timer), ("heatwise", free))
+            },
+        },
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=1))
+    # Compact JSON: the full-week arrays would be ~10x larger with indentation.
+    args.out.write_text(json.dumps(report, separators=(",", ":")), encoding="utf-8")
 
     print(f"Signals: {signals.source} ({signals.day})")
     print(f"Occupancy  heatmap Brier {ml['baseline']['brier']:.4f} | model Brier {ml['model']['brier']:.4f}")
