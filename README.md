@@ -1,6 +1,6 @@
 # Heatwise
 
-**An AI agent that buys your heating for you.** It learns who uses which room and when, heats only those rooms, does it at the cheapest and cleanest hours of the day, and pays for every kWh itself through SolvaPay. It never spends past the budget you loaded without asking.
+**An agentic system that manages your home heating.** It learns who uses which room and when, heats only those rooms, does it at the cheapest and cleanest hours of the day, and pays for every kWh itself through SolvaPay. It never spends past the budget you loaded without asking.
 
 Built for Hack for Impact (Imperial College London, 21 Nov 2026): AI + payments + a sustainable angle.
 
