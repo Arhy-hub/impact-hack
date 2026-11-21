@@ -201,6 +201,8 @@ button, input { font: inherit; color: inherit; }
 .feed .item:first-child { border-top: 0; }
 .feed .time { color: var(--muted); font-size: .8125rem; min-width: 64px; }
 .feed .item.limit .text { color: var(--accent); font-weight: 700; }
+.feed .item.repair .text { color: var(--accent); font-weight: 700; }
+.house .room-note.fault { fill: var(--accent); font-weight: 800; }
 .big-num { font: 600 2.25rem/1 var(--head); }
 .fact { display: flex; gap: 14px; align-items: center; }
 .days { display: flex; gap: 6px; flex-wrap: wrap; }

@@ -372,7 +372,7 @@ class LiveHome:
                           "from your repairs allowance.", t)
             for issue in self.maint.visits_due(t + 1):
                 self._say("repair", f"The engineer has fixed the {self._room_label(issue.room)} radiator. "
-                          "It's warming normally again.", t)
+                          "It's warming normally again.", t + 1)
             kwh = float(self.last_kwh.sum())
             blocks_before = self.wallet.blocks_bought
             self.wallet.pay(t, kwh, float(self.price[s_day]), float(self.carbon[s_day]))

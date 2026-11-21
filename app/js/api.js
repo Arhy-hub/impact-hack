@@ -49,4 +49,7 @@ export const api = {
   jump: (day, hour) => call("/api/jump", { day, hour }),
   mode: m => call("/api/mode", { mode: m }),
   confirm: action => call("/api/confirm", action),
+  repair: (issue, action) => call("/api/repair", { issue, action }),
+  breakRoom: room => call("/api/break", { room }),
+  repairsAllowance: gbp => call("/api/repairs_allowance", { gbp }),
 };

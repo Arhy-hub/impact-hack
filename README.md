@@ -71,7 +71,8 @@ Start the app (`uvicorn heatwise.app:app --port 8010`) and open http://127.0.0.1
 4. When the daily limit is hit, Luke asks **"Allow £2 more?"** (on Home and Budget). Tap **Allow**: that's the SolvaPay approval moment.
 5. **Jump to Thu** and open the living room: the line chart dips while you're away and warms before you're back.
 6. **Impact tab:** "£5 saved, 2 kg less CO₂ (like not driving 12 km)", against an ordinary timer.
-7. **Home → Ask Luke:** "I'm cold" → Luke proposes 21° → **Yes, do it**.
+7. **Home → Ask Luke:** "I'm cold" → Luke proposes a warmer temperature → **Yes, do it**.
+8. **Repairs (the "never think about heating" moment):** Simulation panel → **Break something → Break living room**, then keep playing. Within about 2 hours of house time Luke notices the room is warming too slowly and offers an engineer on Home ("Book engineer · £85"). Tap it: it's paid from the repairs allowance, the engineer comes in working hours, and Luke confirms the fix. **Luke's week** on Home sums it up. (The engineer and repair payment are simulated.)
 
 ## Using the app
 
@@ -83,6 +84,8 @@ uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
 ```
 
 Five tabs (Home, Plan, Budget, Impact, Demo) plus Settings behind the gear on Home:
+
+- **Luke looks after the heating for you:** you set the money and the rules (Budget → **Your rules for Luke**: weekly money, daily limit, temperatures, never-below floor, repairs allowance). He heats, buys the energy, sticks to the budget, spots faulty radiators and books repairs with your approval, and sums up **Luke's week** on Home.
 
 - **Luke** (Ask Luke, on Home): type “I'm cold”, “make the living room 22”, “I'm going away” or “why is the bedroom cold?”. He answers, or asks “Shall I…?” with a change you confirm with one tap (away, the house temperature, one room's temperature, or the budget trim). Nothing changes until you tap Yes. Uses Claude if `ANTHROPIC_API_KEY` is set (in `.env`), built-in rules otherwise.
 - **Live temperatures:** in live mode the room temperatures move within seconds of a change, not just on the quarter-hour (see DECISIONS D20).

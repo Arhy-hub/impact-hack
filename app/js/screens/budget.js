@@ -1,6 +1,7 @@
 // Budget: am I on track this week? Primary action: Add money.
 import { api, store } from "../api.js";
 import { gbp } from "../format.js";
+import { rulesCard } from "../repairs.js";
 import { barChart, button, card, empty, ghosts, h, heading, line, note, ring, sheet, stepper } from "../ui.js";
 
 export const title = "Budget";
@@ -34,6 +35,7 @@ export function render({ state, loading, error }) {
           h("p", { class: "note" }, `By Sunday you'll have spent about ${gbp(b.projected_gbp)}.`),
           b.credit_left_gbp != null ? h("p", { class: "note" }, `${gbp(b.credit_left_gbp)} left to spend.`) : null)),
       h("div", { style: "margin-top:16px" }, button("Add money", addMoney, "wide"))),
+    rulesCard(state),
     heading("Spent each day"),
     card(barChart(state.days.map(d => ({ label: d.day, values: [d.spent_gbp], highlight: d.today })), ["var(--accent)"],
       { refLine: state.limits.daily_gbp, unit: "£", ariaLabel: "Money spent on heating each day" })),

@@ -1,6 +1,7 @@
 // Home: how warm is my home, and what is it doing? Primary action: Away.
 import { api } from "../api.js";
 import { lukeCard } from "./luke.js";
+import { repairCard, reportCard } from "../repairs.js";
 import { PRICE, deg, greeting, roomMood, roomName, time12 } from "../format.js";
 import { badge, button, card, empty, ghosts, h, heading, icon, meter, pill, toggle } from "../ui.js";
 
@@ -43,8 +44,10 @@ export function render({ state, loading, error }, nav) {
       pill("bolt", `${price.text} · ${s.price_p.toFixed(0)}p`, price.tone),
       pill("thermo", `${s.outside_c.toFixed(0)}° outside`),
       pill("leaf", clean ? "Clean energy now" : "Busy grid now", clean ? "calm" : "")),
+    repairCard(s),
     heading("Ask Luke"),
     lukeCard(),
+    reportCard(s),
     heading("Your rooms"),
     s.rooms.map(r => {
       const mood = roomMood(r);

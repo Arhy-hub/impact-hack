@@ -34,8 +34,9 @@ export function houseView(state) {
     svg.append(el("rect", { class: "room-box" + (r.heating ? " heating" : ""), x, y, width: w, height: hgt, rx: 6 }));
     svg.append(el("text", { class: "room-label", x: x + 10, y: y + 20 }, roomName(r.name)));
     svg.append(el("text", { class: "room-temp", x: x + 10, y: y + 46 }, `${r.temp.toFixed(1)}°`));
-    svg.append(el("text", { class: "room-note", x: x + 10, y: y + hgt - 10 },
-      r.heating ? "heating" : r.occupied ? "occupied" : "resting"));
+    const fault = (state.repairs?.issues || []).find(i => i.room === r.name && (i.status === "found" || i.status === "booked"));
+    svg.append(el("text", { class: "room-note" + (fault ? " fault" : ""), x: x + 10, y: y + hgt - 10 },
+      fault ? (fault.status === "booked" ? "repair booked" : "needs repair") : r.heating ? "heating" : r.occupied ? "occupied" : "resting"));
     // Who's here: each person by name; someone the calendar added (guests, WFH) shows as "Guest".
     const here = people.filter(p => p.room === r.name).map(p => [PEOPLE[p.name] || "p0", personName(p.name)]);
     if (r.occupied && !here.length) here.push(["guest", "Guest"]);
