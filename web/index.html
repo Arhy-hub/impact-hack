@@ -59,26 +59,6 @@
   </div>
 
   <div class="card" style="margin-bottom:16px">
-    <h2>The house, step by step</h2>
-    <div class="controls">
-      <button id="play" type="button">▶ Play</button>
-      <input id="scrub" type="range" min="0" max="671" value="0" aria-label="Time in the simulated week">
-      <select id="speed" aria-label="Playback speed">
-        <option value="200">Slow</option><option value="80" selected>Normal</option><option value="25">Fast</option>
-      </select>
-    </div>
-    <div class="now" id="now"></div>
-    <div class="houses">
-      <div class="house"><h3>Old-style timer</h3><svg id="houseTimer" viewBox="0 0 400 260" role="img" aria-label="Timer house floor plan"></svg><div class="tally" id="tallyTimer"></div></div>
-      <div class="house"><h3>Heatwise</h3><svg id="houseHeatwise" viewBox="0 0 400 260" role="img" aria-label="Heatwise house floor plan"></svg><div class="tally" id="tallyHeatwise"></div></div>
-    </div>
-    <div class="controls">
-      <span class="legend">12°C <span class="bar"></span> 22°C</span>
-      <span class="legend">🔥 heater on · 🧍 someone in the room · <b>target</b> = what the controller asked for</span>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:16px">
     <h2>Living room, first 2 days</h2>
     <div class="chart"><canvas id="tempChart" aria-label="Living room temperature, Heatwise versus timer"></canvas></div>
   </div>
@@ -164,100 +144,8 @@ fetch("data.json").then(r => r.json()).then(d => {
       scales: { x: { ticks: { maxTicksLimit: 8 } }, p: { position: "left", title: { display: true, text: "p/kWh" } },
                 g: { position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "g/kWh" } } } }
   });
-  drawHouses(d);
 }).catch(err => { console.error(err); $("error").style.display = "block"; });
 
-// ---------- Animated floor plan ----------
-const LAYOUT = {  // viewBox 400x260; rooms not listed here are skipped
-  bedroom: { x: 8, y: 8, w: 176, h: 118 },
-  kitchen: { x: 8, y: 134, w: 176, h: 118 },
-  living: { x: 192, y: 8, w: 200, h: 244 },
-};
-const NS = "http://www.w3.org/2000/svg";
-const tempColour = t => {  // 12°C blue -> 22°C red
-  const f = Math.min(Math.max((t - 12) / 10, 0), 1);
-  return `hsl(${210 - 210 * f} ${60 + 15 * f}% 72%)`;
-};
-function el(tag, attrs, parent, text) {
-  const e = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
-  if (text !== undefined) e.textContent = text;
-  parent.appendChild(e);
-  return e;
-}
-
-function buildHouse(svg, rooms) {
-  const parts = {};
-  el("rect", { x: 2, y: 2, width: 396, height: 256, rx: 8, fill: "none", stroke: "#888", "stroke-width": 3 }, svg);
-  rooms.forEach((name, i) => {
-    const L = LAYOUT[name];
-    if (!L) return;
-    const g = el("g", {}, svg);
-    const rect = el("rect", { x: L.x, y: L.y, width: L.w, height: L.h, rx: 6, stroke: "#555", "stroke-width": 1.5 }, g);
-    const cx = L.x + 12;
-    el("text", { x: cx, y: L.y + 22, "font-size": 14, "font-weight": 600, fill: "#1d2321" }, g, name[0].toUpperCase() + name.slice(1));
-    const temp = el("text", { x: cx, y: L.y + 56, "font-size": 28, "font-weight": 700, fill: "#1d2321" }, g);
-    const target = el("text", { x: cx, y: L.y + 78, "font-size": 12, fill: "#1d2321" }, g);
-    const icons = el("text", { x: cx, y: L.y + L.h - 14, "font-size": 20 }, g);
-    parts[i] = { rect, temp, target, icons };
-  });
-  return parts;
-}
-
-function drawHouses(d) {
-  const w = d.week, rooms = d.rooms, n = w.occupied.length;
-  const price = d.signals.price_p_per_kwh, carbon = d.signals.carbon_g_per_kwh, tout = d.signals.temp_c;
-  const halfOf = t => Math.floor((t % 96) / 2), hourOf = t => Math.floor((t % 96) / 4);
-  // Running totals per strategy, so scrubbing is instant.
-  const cumulative = key => {
-    let p = 0, g = 0; const out = [];
-    for (let t = 0; t < n; t++) {
-      const k = w[key].kwh[t].reduce((a, b) => a + b, 0);
-      p += k * price[halfOf(t)]; g += k * carbon[halfOf(t)];
-      out.push({ pence: p, grams: g });
-    }
-    return out;
-  };
-  const views = {
-    timer: { parts: buildHouse($("houseTimer"), rooms), cum: cumulative("timer"), tally: $("tallyTimer") },
-    heatwise: { parts: buildHouse($("houseHeatwise"), rooms), cum: cumulative("heatwise"), tally: $("tallyHeatwise") },
-  };
-  const scrub = $("scrub");
-  scrub.max = n - 1;
-
-  function show(t) {
-    $("now").textContent = `${stepTime(t + 96 * w.start_day)} · outside ${tout[hourOf(t)].toFixed(1)}°C · ` +
-      `price ${price[halfOf(t)].toFixed(1)}p/kWh · grid ${Math.round(carbon[halfOf(t)])} g CO₂/kWh · ` +
-      `${w.people_home[t]} ${w.people_home[t] === 1 ? "person" : "people"} home`;
-    for (const [key, v] of Object.entries(views)) {
-      rooms.forEach((_, i) => {
-        const p = v.parts[i]; if (!p) return;
-        const temp = w[key].temp[t][i], target = w[key].target[t][i], kw = w[key].kwh[t][i] * 4;
-        p.rect.setAttribute("fill", tempColour(temp));
-        p.temp.textContent = temp.toFixed(1) + "°";
-        p.target.textContent = `target ${target.toFixed(0)}°` + (kw > 0.005 ? ` · ${kw.toFixed(2)} kW` : "");
-        p.icons.textContent = (kw > 0.005 ? "🔥" : "") + (w.occupied[t][i] ? "🧍" : "");
-      });
-      const c = v.cum[t];
-      v.tally.textContent = `So far this week: £${(c.pence / 100).toFixed(2)} · ${(c.grams / 1000).toFixed(1)} kg CO₂`;
-    }
-  }
-
-  let timer = null;
-  const stop = () => { clearInterval(timer); timer = null; $("play").textContent = "▶ Play"; };
-  $("play").onclick = () => {
-    if (timer) return stop();
-    $("play").textContent = "⏸ Pause";
-    timer = setInterval(() => {
-      const t = (Number(scrub.value) + 1) % n;
-      scrub.value = t; show(t);
-    }, Number($("speed").value));
-  };
-  $("speed").onchange = () => { if (timer) { stop(); $("play").click(); } };
-  scrub.oninput = () => show(Number(scrub.value));
-  scrub.value = 70;  // Mon 17:30: people arriving home, the interesting bit
-  show(70);
-}
 </script>
 </body>
 </html>

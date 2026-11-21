@@ -61,6 +61,18 @@ pytest                         # all tests (offline, no keys needed)
 
 More in [docs/screenshots](docs/screenshots) (dark mode, Schedule, Settings). Regenerate with `python tools/screenshots.py` while the app is running.
 
+## Demo script (2 minutes)
+
+Start the app (`uvicorn heatwise.app:app --port 8010`) and open http://127.0.0.1:8010.
+
+1. **Demo tab:** show this week's calendar (gym, working from home, a trip, friends over). Add one, e.g. "Friends over, Sat 7pm".
+2. **Budget → Your limits:** set a **daily limit** of £3 or £4.
+3. **Demo → Play the week.** Read out Luke's notes: rooms warming before people get home, heat bought each hour, the trip putting the house on away.
+4. When the daily limit is hit, Luke asks **"Allow £2 more?"** (on Home and Budget). Tap **Allow**: that's the SolvaPay approval moment.
+5. **Jump to Thu** and open the living room: the line chart dips while you're away and warms before you're back.
+6. **Impact tab:** "£5 saved, 2 kg less CO₂ (like not driving 12 km)", against an ordinary timer.
+7. **Home → Ask Luke:** "I'm cold" → Luke proposes 21° → **Yes, do it**.
+
 ## Using the app
 
 The household app is a phone-first web app in a warm, friendly style: plain-English labels, visuals you can read at a glance (temperature bars, a budget ring, 24-hour heating strips), light and dark mode, and large-text support:
@@ -70,9 +82,9 @@ uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
 # open http://127.0.0.1:8000 (best at phone width)
 ```
 
-Four tabs:
+Five tabs (Home, Plan, Budget, Impact, Demo) plus Settings behind the gear on Home:
 
-- **Ask Heatwise** (on Home): type “I'm cold”, “I'm going away” or “why is the bedroom cold?”. It answers, or proposes a change you confirm with one tap. Uses Claude if `ANTHROPIC_API_KEY` is set, built-in rules otherwise.
+- **Luke** (Ask Luke, on Home): type “I'm cold”, “I'm going away” or “why is the bedroom cold?”. It answers, or proposes a change you confirm with one tap. Uses Claude if `ANTHROPIC_API_KEY` is set, built-in rules otherwise.
 
 - **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
 - **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.

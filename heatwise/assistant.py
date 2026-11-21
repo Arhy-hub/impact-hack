@@ -69,11 +69,11 @@ def rule_reply(text: str, state: dict) -> dict:
     if re.search(r"\b(spent|cost|bill)\b", t):
         b = state["budget"]
         return {"reply": f"You've spent £{b['spent_gbp']:.2f} of £{b['budget_gbp']:.2f} this week, heading for about £{b['projected_gbp']:.2f}.", "action": None}
-    return {"reply": "I can turn on away mode, make it warmer or cooler, help you save, or explain why a room is at its temperature. Try “I'm cold” or “why is the bedroom cold?”",
+    return {"reply": "I'm Luke. I can turn on away mode, make it warmer or cooler, help you save, or explain why a room is at its temperature. Try “I'm cold” or “why is the bedroom cold?”",
             "action": None}
 
 
-SYSTEM = """You are Heatwise, a friendly home-heating assistant. Reply in at most two short, warm sentences.
+SYSTEM = """You are Luke, Heatwise's friendly helper who looks after the home's heating. Reply in at most two short, warm sentences.
 You may propose ONE action for the user to confirm: {"type":"away","value":true|false},
 {"type":"comfort","value":16-23}, or {"type":"trim","value":0-3}. Never invent numbers: use only the state given.
 Respond with JSON only: {"reply": "...", "action": {...} or null}."""

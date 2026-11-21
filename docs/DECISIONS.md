@@ -212,3 +212,16 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | T2 | A **generated calendar around now** (gym in an hour, WFH tomorrow, a trip in two days, friends over in five) when no real calendar is connected | Always something upcoming to show how the calendar changes heating. |
 | T3 | **Fallback to the simulated week** if live mode fails to start (`HEATWISE_MODE=simulated` forces it), plus a Live / Example week switch in Settings → Demo | The demo never dies; the example week can still be fast-forwarded. |
 | T4 | Kept on its own branch | So the stable `heatwise-mvp` stays untouched until the team picks one. |
+
+### Demo-friendly version
+
+| # | Decision | Why |
+|---|---|---|
+| D5 | **The example week is the default** (`HEATWISE_MODE=simulated`); live mode stays a switch in Settings | A whole week can be shown in a minute and it always works offline. Live mode changes too slowly for a pitch. |
+| D6 | **Demo tab**: Play (1 h or 6 h per second), jump to any day (restarts the week and fast-forwards, keeping calendar and limits), Luke's notes, and an editable mock calendar | Everything for showing off on one screen. |
+| D7 | **Luke, the helper agent**: one named voice (monogram avatar, no emoji). He chats on Home, narrates the week ("Warming the living room. Someone usually comes in soon."), and asks for approval when a limit is hit | A friendly, memorable agent makes the AI + payments story easy to follow. |
+| D8 | **Limits**: weekly budget (money loaded through SolvaPay) and an optional daily limit. When it's hit, rooms in use drop to eco and the rest rest (never below 12°), and Luke asks "Allow £2 more?" | The agent-spending-limit moment, made visible. |
+| D9 | Purchases are narrated once an hour ("Paid 60p for heat this hour. £19.70 left") | Every 15 minutes was too noisy. |
+| D10 | **No heatmaps or strips anywhere.** Room: a line chart (temperature vs target, last 24 h). Budget: spend-per-day bars with the limit as a dashed line. Impact: CO₂ per day, timer vs Heatwise. The analyst page's floor-plan section was removed. | The team found the strip visuals hard to read; simple line and bar charts read at a glance. |
+| D11 | **Impact tab**: money and CO₂ saved vs an ordinary timer over the same simulated days, in everyday terms (km driven, phone charges), plus three one-line "why it matters" cards | Sustainability that's easy to digest. CO₂ comparisons: about 0.17 kg per km driven, about 12 Wh per phone charge at about 0.2 kg CO₂ per kWh. |
+| D12 | Not done: Luke adding calendar events from chat | Kept scope tight; events are added from the Demo tab. |
