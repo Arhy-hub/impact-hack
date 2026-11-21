@@ -32,7 +32,7 @@ export function render({ state, loading, error }, nav) {
         : `Example week · ${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
       h("div", { style: "display:flex;gap:8px;align-items:center" }, toggle(s.away, on => api.away(on), "Away"),
         h("button", { class: "toggle", style: "padding:10px", "aria-label": "Settings", onclick: () => nav.push("settings") }, icon("gear", 20)))),
-    s.limits?.daily_hit ? card(h("div", { class: "luke" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+    s.limits?.daily_hit ? card(h("div", { class: "luke" }, h("span", { class: "avatar", "aria-hidden": "true" }),
       h("div", { class: "bubble" }, "We've hit today's spending limit, so I'm keeping things gentle. Allow £2 more?",
         h("div", { style: "display:flex;gap:8px;margin-top:8px" }, button("Allow £2", () => api.allow()), button("Keep saving", () => {}, "quiet"))))) : null,
     h("section", { class: "hero", "aria-label": `Inside ${deg(avg)}. ${sentence(s)}` },

@@ -65,7 +65,7 @@ export function render({ state, loading, error }) {
     card(state.log.length
       ? h("div", { class: "feed" }, [...state.log].reverse().slice(0, 12).map(l => h("div", { class: `item ${l.kind}` },
           h("span", { class: "time" }, `${l.time.slice(0, 3)} ${time12(l.time.slice(4))}`), h("span", { class: "text" }, l.text))))
-      : h("div", { class: "luke" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"), h("div", { class: "bubble" }, "Press Play and I'll tell you what I'm doing as the week goes by."))),
+      : h("div", { class: "luke" }, h("span", { class: "avatar", "aria-hidden": "true" }), h("div", { class: "bubble" }, "Press Play and I'll tell you what I'm doing as the week goes by."))),
     heading("This week's calendar"),
     card(state.events.length ? state.events.map(e => h("div", { class: "event" },
       h("div", { style: "flex:1" }, h("div", { class: "t" }, e.title), h("div", { class: "note", style: "margin:0" }, `${e.start_label.slice(0, 3)} ${time12(e.start_label.slice(4))}`)),

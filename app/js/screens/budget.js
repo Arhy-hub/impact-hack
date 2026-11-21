@@ -45,7 +45,7 @@ export function render({ state, loading, error }) {
         state.limits.daily_gbp == null
           ? button("Set a daily limit", () => api.limits({ daily_gbp: 3 }), "soft")
           : stepper(state.limits.daily_gbp, { min: 1, max: 10, step: 1, onChange: v => api.limits({ daily_gbp: v }), label: "daily limit", format: v => `£${v}` })),
-      state.limits.daily_hit ? h("div", { class: "luke", style: "margin-top:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+      state.limits.daily_hit ? h("div", { class: "luke", style: "margin-top:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }),
         h("div", { class: "bubble" }, h("div", {}, "You've hit today's limit. Shall I spend £2 more to keep you comfortable?"),
           h("div", { style: "display:flex;gap:8px;margin-top:8px" }, button("Allow £2", () => api.allow()), button("Keep saving", () => {}, "quiet")))) : null,
       note(`Heatwise never lets a room go below ${state.limits.floor_c}°, whatever the limits.` +
