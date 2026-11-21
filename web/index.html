@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heatwise toy run</title>
+<!-- Only external resource: Chart.js, pinned version, from cdnjs. No trackers, no cookies. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#f7f7f4; --card:#fff; --ink:#1d2321; --muted:#5f6b66; --line:#dfe3df;
+          --warm:#d1495b; --cool:#2e86ab; --good:#2a9d6f; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#141917; --card:#1d2421; --ink:#eef2ef; --muted:#9aa8a1; --line:#2d3632; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, sans-serif; }
+  main { max-width:1040px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { margin:0 0 4px; font-size:28px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card h2 { margin:0 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .big { font-size:26px; font-weight:650; }
+  .good { color:var(--good); }
+  .muted { color:var(--muted); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:5px 8px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; }
+  .chart { position:relative; height:280px; }
+  .scroll { max-height:280px; overflow:auto; }
+  .warn { border-color:var(--warm); }
+  #error { display:none; color:var(--warm); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Heatwise</h1>
+  <p class="sub">An agent that learns who uses which room, heats only those rooms at cheap, clean hours, and pays for every kWh itself within your budget. <b>Toy run on simulated data</b>.</p>
+  <p id="error">Couldn't load <code>data.json</code>. Run <code>python -m heatwise.run_toy</code>, then serve this folder with <code>python -m http.server -d web</code>.</p>
+
+  <div class="grid">
+    <div class="card"><h2>Cost, 1 week</h2><div class="big" id="cost"></div><div class="muted" id="costSub"></div></div>
+    <div class="card"><h2>CO₂, 1 week</h2><div class="big" id="carbon"></div><div class="muted" id="carbonSub"></div></div>
+    <div class="card"><h2>Comfort</h2><div class="big" id="comfort"></div><div class="muted" id="comfortSub"></div></div>
+    <div class="card"><h2>Occupancy model</h2><div class="big" id="ml"></div><div class="muted" id="mlSub"></div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h2>Living room, first 2 days</h2>
+    <div class="chart"><canvas id="tempChart" aria-label="Living room temperature, Heatwise versus timer"></canvas></div>
+  </div>
+
+  <div class="grid">
+    <div class="card" style="grid-column: span 2">
+      <h2>Today's price and grid carbon</h2>
+      <div class="chart"><canvas id="sigChart" aria-label="Electricity price and carbon intensity by half hour"></canvas></div>
+      <div class="muted" id="sigSub"></div>
+    </div>
+    <div class="card" id="walletCard">
+      <h2>Agent wallet</h2>
+      <div class="big" id="spent"></div>
+      <div class="muted" id="walletSub"></div>
+      <p class="muted" id="topup"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Energy purchases (first 50 steps that bought a block)</h2>
+    <div class="scroll"><table id="receipts"><thead><tr><th>Step</th><th>Time</th><th>kWh</th><th>Cost</th><th>CO₂</th><th>Blocks</th></tr></thead><tbody></tbody></table></div>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const gbp = x => "£" + x.toFixed(2);
+const stepTime = s => { const d = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][Math.floor(s / 96) % 7];
+  const m = (s % 96) * 15; return `${d} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+
+fetch("data.json").then(r => r.json()).then(d => {
+  const t = d.timer, h = d.heatwise, p = d.heatwise_paid, sv = d.savings_vs_timer;
+  $("cost").textContent = gbp(h.cost_gbp);
+  $("costSub").textContent = `timer ${gbp(t.cost_gbp)} · ${sv.cost_pct}% cheaper`;
+  $("carbon").textContent = h.carbon_kg.toFixed(1) + " kg";
+  $("carbonSub").textContent = `timer ${t.carbon_kg.toFixed(1)} kg · ${sv.carbon_pct}% less`;
+  $("comfort").textContent = h.comfort_pct + "%";
+  $("comfortSub").textContent = `timer ${t.comfort_pct}% of occupied time`;
+  $("ml").textContent = "Brier " + d.ml.model.brier.toFixed(3);
+  $("mlSub").textContent = `routine heatmap alone ${d.ml.baseline.brier.toFixed(3)} (lower is better)`;
+  [$("cost"), $("carbon")].forEach(e => e.classList.add("good"));
+
+  $("spent").textContent = `${gbp(p.spent_gbp)} of ${gbp(p.budget_gbp)}`;
+  $("walletSub").textContent = `${p.blocks_bought} blocks of 10p bought via ${p.supplier} · comfort trimmed up to ${p.max_trim}° to stay in budget · comfort ${p.comfort_pct}%`;
+  if (p.topup_requests.length) {
+    $("walletCard").classList.add("warn");
+    $("topup").textContent = `Out of credit at ${stepTime(p.topup_requests[0].step)}. Safety heating kept on (emergency credit ${gbp(p.emergency_gbp)}). Top-up needs approval.`;
+  } else {
+    $("topup").textContent = "Never ran out of credit. No top-up needed.";
+  }
+  $("sigSub").textContent = `Source: ${d.signals.source} (${d.signals.day}). Octopus Agile London, National Grid carbon intensity.`;
+
+  const tbody = $("receipts").querySelector("tbody");
+  d.receipts.forEach(r => {
+    const tr = document.createElement("tr");
+    [r.step, stepTime(r.step), r.kwh.toFixed(3), r.pence.toFixed(1) + "p", r.carbon_g.toFixed(0) + " g", r.blocks_bought]
+      .forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+    tbody.appendChild(tr);
+  });
+
+  const css = getComputedStyle(document.documentElement);
+  const c = name => css.getPropertyValue(name).trim();
+  Chart.defaults.color = c("--muted");
+  Chart.defaults.borderColor = c("--line");
+  const labels = d.series.living_temp_heatwise.map((_, i) => stepTime(i));
+  new Chart($("tempChart"), {
+    data: { labels, datasets: [
+      { type: "line", label: "Heatwise °C", data: d.series.living_temp_heatwise, borderColor: c("--warm"), pointRadius: 0, borderWidth: 2, yAxisID: "y" },
+      { type: "line", label: "Timer °C", data: d.series.living_temp_timer, borderColor: c("--cool"), pointRadius: 0, borderWidth: 2, borderDash: [5, 4], yAxisID: "y" },
+      { type: "bar", label: "Someone in the room", data: d.series.living_occupied, backgroundColor: "rgba(42,157,111,.18)", yAxisID: "occ", barPercentage: 1, categoryPercentage: 1 },
+    ]},
+    options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      scales: { x: { ticks: { maxTicksLimit: 8 } }, y: { title: { display: true, text: "°C" } },
+                occ: { display: false, min: 0, max: 1 } } }
+  });
+  const half = d.signals.price_p_per_kwh.map((_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+  new Chart($("sigChart"), {
+    type: "line",
+    data: { labels: half, datasets: [
+      { label: "Price p/kWh", data: d.signals.price_p_per_kwh, borderColor: c("--warm"), pointRadius: 0, yAxisID: "p" },
+      { label: "Carbon g/kWh", data: d.signals.carbon_g_per_kwh, borderColor: c("--muted"), pointRadius: 0, yAxisID: "g" },
+    ]},
+    options: { maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      scales: { x: { ticks: { maxTicksLimit: 8 } }, p: { position: "left", title: { display: true, text: "p/kWh" } },
+                g: { position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "g/kWh" } } } }
+  });
+}).catch(() => { $("error").style.display = "block"; });
+</script>
+</body>
+</html>
