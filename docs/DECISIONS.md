@@ -194,3 +194,12 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | U27 | Two meaning colours: **orange-red = heating, money and actions**; **sage green = saving, cheap, clean**. A separate mid-orange marks "kept mild" and "pricey" in strips. | Colour carries meaning, so it's easy to read. A screenshot review showed "kept mild" and "resting" looked the same, so the mid tone was added. |
 | U28 | Times in 12-hour format ("6pm", "7pm to 11pm") | Friendlier and more natural in everyday British speech than "18:00". |
 | U29 | Tab renamed "Schedule" → **"Plan"**. Settings uses "Look", "Comfy temperature" and "Pretend time". | Shorter, everyday words. |
+
+### Assistant (`heatwise/assistant.py`, `app/js/screens/ask.js`)
+
+| # | Decision | Why |
+|---|---|---|
+| A1 | "Ask Heatwise" turns a message into an answer or **one proposed action** (away, comfort, trim) that the user must tap to confirm | The LLM never controls heating directly. Humans approve changes. |
+| A2 | Two engines: keyword rules (always on) and Claude `claude-opus-5-5` at low effort when `ANTHROPIC_API_KEY` is set. Claude's JSON is validated against the same allow-list; any error, refusal or bad output falls back to rules. | The app works offline and without a key; Claude makes it understand messy phrasing. |
+| A3 | Numbers in answers come only from the engine state passed in, never from the model | No made-up savings or temperatures. |
+| A4 | Input capped at 500 characters; `/api/confirm` re-validates every action | Safe to expose. |

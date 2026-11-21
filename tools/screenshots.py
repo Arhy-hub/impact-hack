@@ -39,6 +39,7 @@ SHOTS = {
     "settings-light": "?theme=light&tab=settings",
     "settings-dark": "?theme=dark&tab=settings",
     "room-dark": "?theme=dark&room=living",
+    "home-largetext": "?theme=light&text=xl",
 }
 PORT = 9333
 

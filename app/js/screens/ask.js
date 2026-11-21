@@ -16,7 +16,7 @@ async function send(text) {
 }
 
 export function askCard() {
-  const input = h("input", { class: "field", placeholder: "Try “I'm cold” or “why is the bedroom cold?”", "aria-label": "Ask Heatwise", maxlength: 500 });
+  const input = h("input", { class: "field", placeholder: "e.g. I'm cold", "aria-label": "Ask Heatwise", maxlength: 500 });
   const go = () => { const t = input.value.trim(); if (t) send(t); };
   input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
   const answer = last && h("div", { style: "margin-top:12px" },

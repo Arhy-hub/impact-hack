@@ -72,6 +72,8 @@ uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
 
 Four tabs:
 
+- **Ask Heatwise** (on Home): type “I'm cold”, “I'm going away” or “why is the bedroom cold?”. It answers, or proposes a change you confirm with one tap. Uses Claude if `ANTHROPIC_API_KEY` is set, built-in rules otherwise.
+
 - **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
 - **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.
 - **Plan:** which rooms heat when over the next 24 hours, the cheapest hours, and calendar events with what each one does to the heating.
