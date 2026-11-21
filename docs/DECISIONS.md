@@ -45,3 +45,17 @@ Every choice made while building Heatwise, and why. Newest at the bottom of each
 | O7 | Laplace smoothing on the heatmap (an unseen cell = 0.5) | Avoids 0 and 1 probabilities, which break the log-odds feature. |
 
 **Results (seed 0, 35 training days, 7 test days):** heatmap Brier 0.0327 / AUC 0.9947; model Brier 0.0250 / AUC 0.9949. AUC is near 1 for both because the toy routines are regular. Real homes will be noisier, so judge on Brier.
+
+## Signals (`heatwise/signals.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| G1 | Octopus Agile, London region (`C`) | Public, free and half-hourly. Agile is the best-known UK time-of-use tariff. London because the event is in London. |
+| G2 | Find the Agile product code from the products list instead of hardcoding it | Octopus releases new Agile versions (`AGILE-24-10-01` today). Hardcoding would break silently. |
+| G3 | Match slots by timestamp and fill gaps from neighbouring slots | The real API returns slots newest first and can skip some (46 of 48 today). |
+| G4 | Fall back from live data to the committed snapshot, then to a synthetic day, and record which was used in `source` | The demo must survive venue Wi-Fi. The UI should be honest about which data it used. |
+| G5 | `data/signals_snapshot.json` is committed | It's public market and weather data, so it's safe to publish, and it lets the repo run offline. |
+| G6 | Tests use `httpx.MockTransport` | The test suite never touches the network, so CI and offline runs behave the same. |
+| G7 | User-Agent `heatwise-hackathon`, with no personal details | Some public APIs ask clients to identify themselves. We identify the app, not a person. |
+
+**Snapshot taken 2026-11-21:** Agile 28.1 to 53.2 p/kWh; carbon 136 to 226 g/kWh; London 2.8 to 7.7°C.
