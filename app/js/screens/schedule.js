@@ -1,7 +1,7 @@
 // Plan: when will each room heat today, when is energy cheap, and what's in the calendar?
 import { api } from "../api.js";
 import { roomName, time12 } from "../format.js";
-import { badge, card, empty, ghosts, h, heading, legend, note, strip } from "../ui.js";
+import { badge, card, empty, ghosts, h, heading, note } from "../ui.js";
 
 export const title = "Plan";
 
@@ -23,25 +23,26 @@ export function render({ state, loading, error }) {
     message: "Check the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
   const p = state.plan;
   const at = i => time12(p.hours[i] ?? `${String((Number(p.hours[p.hours.length - 1].slice(0, 2)) + 1) % 24).padStart(2, "0")}:00`);
-  const labels = [at(0), at(12), at(23)];
   const spans = rs => rs.map(([a, b]) => `${at(a)}–${at(b)}`).join(", ");
   const cheap = runs(p.price, "cheap");
 
   return [
     h("div", { class: "top" }, h("div", {}, h("h1", { class: "hello" }, "Today's plan"), h("div", { class: "date" }, `Next 24 hours from ${time12(state.clock.slice(4))}`))),
-    Object.entries(p.rooms).map(([name, cells]) => {
-      const heat = runs(cells, "heat");
-      return card(
-        h("div", { class: "room-name" }, roomName(name)),
-        h("div", { class: "note", style: "margin:2px 0 0" }, heat.length ? `Heats ${spans(heat)}` : "Resting all day"),
-        strip(cells.map(c => (c === "heat" ? "heat" : c === "eco" ? "eco" : "")), labels, `${roomName(name)} heating plan`));
-    }),
-    legend([["linear-gradient(180deg,var(--accent-2),var(--accent))", "Heating"], ["var(--accent-mid)", "Kept mild"], ["var(--track)", "Resting"]]),
+    // A plain, time-ordered list: when each room heats. No charts.
+    (() => {
+      const rows = Object.entries(p.rooms)
+        .flatMap(([name, cells]) => runs(cells, "heat").map(([a, b]) => ({ name, a, b })))
+        .sort((x, y) => x.a - y.a);
+      return card(rows.length
+        ? rows.map(r => h("div", { class: "event" }, badge("flame", "hot"),
+            h("div", { style: "flex:1" }, h("div", { class: "t" }, roomName(r.name)), h("div", { class: "note", style: "margin:0" }, r.a === 0 ? "Heating now" : "Warms up")),
+            h("div", { class: "t" }, `${at(r.a)}–${at(r.b)}`)))
+        : h("p", { style: "margin:0" }, "Nothing needs heating in the next 24 hours."));
+    })(),
+    note("Any room not listed rests to save energy."),
     heading("Cheapest times"),
-    card(
-      h("div", { style: "font-weight:700" }, cheap.length ? `Best for the washing machine: ${spans(cheap)}` : "No especially cheap times today"),
-      strip(p.price.map(l => (l === "cheap" ? "cheap" : l === "peak" ? "eco" : "")), labels, "Electricity prices over the next 24 hours"),
-      legend([["var(--calm)", "Cheap and clean"], ["var(--accent-mid)", "Pricey"]])),
+    card(h("div", { class: "event" }, badge("bolt", "calm"),
+      h("span", {}, cheap.length ? `Run the washing machine or dishwasher at ${spans(cheap.slice(0, 2))}.` : "No especially cheap times today."))),
     heading("From your calendar"),
     state.calendar.upcoming.length
       ? card(state.calendar.upcoming.map(e => {
