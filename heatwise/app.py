@@ -97,6 +97,14 @@ def create_app(home_factory=default_home) -> FastAPI:
 
     app.mount("/assets", StaticFiles(directory=APP_DIR), name="assets")
 
+    @app.middleware("http")
+    async def revalidate_assets(request, call_next):
+        # Browsers revalidate the page and its modules each load, so edits show up straight away.
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/assets"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     @app.get("/", include_in_schema=False)
     def page():
         return FileResponse(PAGE, media_type="text/html")

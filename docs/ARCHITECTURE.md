@@ -52,6 +52,18 @@
 
 Every API action returns the full state, so the page simply re-renders. Status chips and explanations come from reason codes (`controller.decide`), so an LLM can reword them later without changing the API.
 
+### Front end (`app/`)
+
+| File | Role |
+|---|---|
+| `index.html` | Shell only: the view container and the tab bar. |
+| `styles.css` | Design tokens (iOS semantic colours, text styles, one accent) and components (inset grouped list, rows, switch, stepper, tab bar, action sheet, placeholders). |
+| `js/api.js` | The store and API calls. Every call returns the full state; screens subscribe. |
+| `js/ui.js` | Building blocks: `section`, `row`, `action`, `toggle`, `stepper`, `actionSheet`, `unavailable`, `placeholderSection`, the icon set. Text via `textContent` only. |
+| `js/format.js` | Shared wording and number formats. |
+| `js/main.js` | Tab bar, a navigation stack per tab, rendering, and the `?theme` / `?text` preview switches. |
+| `js/screens/*.js` | One file per screen (`home`, `room`, `budget`, `schedule`, `settings`). Each exports `render(store, nav)` and handles its own loading, empty and error states. |
+
 ## Modules
 
 | Module | Main pieces | Notes |

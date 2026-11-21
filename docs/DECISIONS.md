@@ -155,7 +155,7 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 
 | # | Decision | Why |
 |---|---|---|
-| U1 | A mobile web app (FastAPI with one static page), styled after the Hive app: greeting, away switch, room cards with actual and target temperatures and a Boost button | Chosen by the team. It works on any phone through a link, with no app store or build step. The Hive layout is familiar to UK smart-heating users. |
+| U1 | *(Superseded by U9.)* A mobile web app (FastAPI with one static page), styled after the Hive app: greeting, away switch, room cards with actual and target temperatures and a Boost button | Chosen by the team. It works on any phone through a link, with no app store or build step. The Hive layout is familiar to UK smart-heating users. |
 | U2 | Every endpoint returns the full home state | The page is a pure render of the server state: no client-side state to get out of sync, and simple to test. |
 | U3 | A demo clock (+15m, +1h, Play, Reset) instead of real time | A real week is too slow for a 3-minute pitch. |
 | U4 | Demo budget defaults to **£30** a week (`HEATWISE_BUDGET`) | At £30 the projection goes over on Monday evening, so the approval flow (Top up or Trim) shows in the demo. Auto-trim then brings it back on track by Wednesday. The toy run keeps £40. |
@@ -163,3 +163,19 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | U6 | The "nobody home" tip shows only when every room really is at frost level | The first version showed it while rooms were warming up for people arriving home, which contradicted the room cards. |
 | U7 | No assistant chat yet | The LLM is deferred to the next round (the team's call). The "why" sentences are templates for now. |
 | U8 | DOM built with `textContent`, docs/OpenAPI off, one lock around the household, server bound to 127.0.0.1 in the instructions | Safe defaults if the repo or demo goes public. |
+
+### Revised UI (iOS Human Interface Guidelines)
+
+| # | Decision | Why |
+|---|---|---|
+| U9 | Rebuilt the app to the team's iOS UI standard: four tabs (Home, Budget, Schedule, Settings), a pushed Room screen, inset grouped lists, system font and text styles in `rem` (scales with the browser's text size), iOS semantic colours with light and dark mode, and one accent (system orange). | The first version read as a template (emoji icons, coloured chips, cards inside cards). The standard asks for what Apple's own apps do. |
+| U10 | **Boost removed** everywhere (UI, API, engine, tests) | The team's call. |
+| U11 | Icons are a small hand-drawn outline set at one weight, not SF Symbols | Apple's licence only allows SF Symbols in apps on Apple platforms, and this is a web app. One consistent set keeps the rule's intent. |
+| U12 | One file per screen, plus shared `ui.js`, `api.js`, `format.js` and `styles.css` | Compartmentalised, as asked. Screens can be changed or swapped on their own. |
+| U13 | Top up uses an action sheet (£5, £10, £20, Cancel) | The web equivalent of `.confirmationDialog`: one primary action, with the choices kept off the main screen. |
+| U14 | Loading uses placeholder rows. Errors and empty states use a centred "content unavailable" view with a Retry action. | The standard asks for all three states on every screen, and for placeholders over spinners. |
+| U15 | Each tab keeps its own navigation stack, and tapping the current tab pops to its root | iOS behaviour. A test in the browser found the Room screen staying on top when switching tabs. |
+| U16 | At the largest text size, row values stack under their titles | At 160% text, "Electricity" and its value overlapped. iOS stacks rows the same way at accessibility sizes. |
+| U17 | Demo time controls moved into Settings, under Demo | Keeps the main screens about the household. The demo controls are still one tap away for the pitch. |
+| U18 | Assets are served with `Cache-Control: no-cache` | Browsers kept stale JavaScript modules after edits. Revalidating each load fixes that. |
+| U19 | No emoji anywhere, including the demo calendar ("Trip to Manchester") | Part of the standard. |

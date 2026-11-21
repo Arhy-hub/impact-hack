@@ -53,19 +53,21 @@ pytest                         # all tests (offline, no keys needed)
 
 ## Using the app
 
-The household app is a phone-first web page in the style of the Hive app:
+The household app is a phone-first web app that follows Apple's Human Interface Guidelines (system font and text styles, inset grouped lists, a tab bar, one accent colour, light and dark mode, large-text support):
 
 ```bash
 uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
 # open http://127.0.0.1:8000 (best at phone width)
 ```
 
-- **Room cards:** actual temperature, target, status (In use, Warming up, Eco, Saving, Away, Boost…), **Boost 1h**, and **Why?** for a one-line explanation of the decision.
-- **Away toggle** (top right): every room drops to the 12°C safety level.
-- **Budget card:** spent this week against the budget you loaded, the projection, and credit left. When heading over budget it offers **Top up £10** or **Trim 1° more**. When out of credit, safety heating only until you top up.
-- **Today's plan:** the next 24 hours per room (heating, eco, off), cheap and peak hours, and calendar events.
-- **Tips:** short, practical suggestions.
-- **Demo clock:** `+15m`, `+1h`, `▶ Play` and `↺` move the simulated week along. The home starts on Monday at 16:00.
+Four tabs:
+
+- **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
+- **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.
+- **Schedule:** which rooms heat when over the next 24 hours, the cheapest hours, and calendar events with what each one does to the heating.
+- **Settings:** connect Google Calendar (secret iCal link), the daytime comfort temperature, and a **Demo** section to move the simulated week along (the home starts on Monday at 16:00).
+
+Design review helpers: add `?theme=dark`, `?theme=light` or `?text=xl` (largest text size) to the URL.
 
 Configuration, all optional, in `.env` (see `.env.example`):
 

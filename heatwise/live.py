@@ -368,6 +368,20 @@ class LiveHome:
             tips.append(f"\"{e.title}\" is coming up. The house will drop to 12° while you're away and warm up before you're back.")
         return tips[:3]
 
+    def upcoming_events(self) -> list[dict]:
+        """Calendar events from now to the end of the week, with what each does to the heating."""
+        effect = {"away": "House on away, warm again before you're back",
+                  "wfh": "Living room kept warm", "guests": "Living room and kitchen kept warm",
+                  None: "No change to heating"}
+        out = []
+        for e in self.events:
+            start, end = cal.step_of(e.start, self.week_start), cal.step_of(e.end, self.week_start)
+            if end > self.t and start < WEEK_STEPS:
+                out.append({"title": e.title, "kind": e.kind, "effect": effect[e.kind],
+                            "start": clock(max(start, 0)), "end": clock(min(end, WEEK_STEPS - 1)),
+                            "now": start <= self.t < end})
+        return out
+
     def budget(self) -> dict:
         spent = (self.wallet.spent_pence + self.wallet.emergency_pence) / 100
         projected = self._projected_p() / 100
@@ -423,6 +437,7 @@ class LiveHome:
             "tips": self.tips(),
             "calendar": {"source": self.calendar_source, "error": self.calendar_error,
                          "events_this_week": len(self.events),
+                         "upcoming": self.upcoming_events(),
                          "now": cal.hints(self.events, t, self.week_start)["events"]},
             "comfort_c": self.settings.comfort,
             "finished": self.finished,

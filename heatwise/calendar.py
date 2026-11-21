@@ -105,7 +105,7 @@ def demo_calendar(week_start: date) -> str:
     events = [
         ("Gym", at(0, 18, 30), at(0, 20)),
         ("WFH", at(1, 9), at(1, 17)),
-        ("Trip to Manchester ✈️", at(3, 7), at(4, 19)),
+        ("Trip to Manchester", at(3, 7), at(4, 19)),
         ("Friends over for dinner", at(5, 18), at(5, 23, 30)),
     ]
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Heatwise//demo//EN"]
