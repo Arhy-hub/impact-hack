@@ -11,3 +11,4 @@ __pycache__/
 data/*.local.json
 *.pem
 *.key
+!.env.example

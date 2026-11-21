@@ -105,3 +105,12 @@ Every choice made while building Heatwise, and why. Newest at the bottom of each
 | Heatwise, £40 budget | £38.27 | — | — | 76.1% |
 
 So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. These numbers are synthetic; they show the idea works, not what a real home would save. Prices on the snapshot day were high (28 to 53p/kWh), which inflates the £ figures.
+
+## Docs and publishing (continued)
+
+| # | Decision | Why |
+|---|---|---|
+| P4 | `.env.example` is un-ignored with `!.env.example` | `.env.*` would otherwise hide the template that tells the team which keys exist. |
+| P5 | **No licence file yet** | Choosing a licence is the team's decision. Without one the code is "all rights reserved" even if the repo is public. Add MIT or Apache-2.0 if you want others to reuse it. |
+| P6 | A secrets and personal-data scan runs over tracked files before publishing (keys, tokens, email addresses) | A final check that nothing private slips in. |
+| P7 | Security issues are reported through private GitHub security advisories | Standard practice for a public repo. |
