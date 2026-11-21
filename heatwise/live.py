@@ -20,6 +20,7 @@ these later without changing the API.
 
 from __future__ import annotations
 
+import copy
 import os
 from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
@@ -615,6 +616,32 @@ class LiveHome:
             "co2_kg": round(sum(r.carbon_g for r in self.wallet.receipts) / 1000, 2),
         }
 
+    def _step_fraction(self) -> float:
+        """Real-time mode: how far (0 to 1) the real clock is into the current 15-minute step."""
+        if not self.realtime or self.finished:
+            return 0.0
+        midnight = datetime.combine(self.week_start, datetime.min.time(), tzinfo=timezone.utc)
+        secs = (datetime.now(timezone.utc) - midnight).total_seconds() - self.t * 900
+        return min(max(secs / 900, 0.0), 1.0)
+
+    def _live_temps(self) -> tuple[np.ndarray, np.ndarray | None]:
+        """Room temperatures right now, and heat being delivered (kW) if mid-step.
+
+        The model moves in 15-minute steps. In real-time mode that would freeze the
+        temperatures for up to 15 minutes after a change, so the display runs this
+        step's physics on a copy of the house (current targets) and shows the part
+        of it that has happened so far. Billing and history still use whole steps.
+        """
+        temps = self.house.state.temps
+        f = self._step_fraction()
+        if f <= 0:
+            return temps, None
+        s_day = self.t % STEPS_PER_DAY
+        ahead = copy.deepcopy(self.house)
+        q = ahead.heat_needed_kw(self.targets, self.temp_out[s_day])
+        ahead.step(q, self.temp_out[s_day])
+        return temps + f * (ahead.state.temps - temps), q
+
     def state(self) -> dict:
         """Everything the app shows, as plain JSON-safe Python types."""
         return _plain(self._state())
@@ -625,13 +652,14 @@ class LiveHome:
         hour = s_day // 4
         greeting = "Good morning" if 5 <= hour < 12 else "Good afternoon" if 12 <= hour < 18 else "Good evening"
         rooms = []
+        live_temps, live_q = self._live_temps()
         for i, name in enumerate(self.names):
             chip, why = self._status(i)
             rooms.append({
                 "name": name,
-                "temp": round(float(self.house.state.temps[i]), 1),
+                "temp": round(float(live_temps[i]), 1),
                 "target": round(float(self.targets[i]), 1),
-                "heating": bool(self.last_kwh[i] > 1e-4),
+                "heating": bool((live_q[i] if live_q is not None else self.last_kwh[i]) > 1e-4),
                 "comfort": self.room_comfort.get(i, self.settings.comfort),
                 "warmup_min": None if not np.isfinite(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i])
                               else int(round(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i] * 60)),

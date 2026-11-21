@@ -144,3 +144,20 @@ def test_room_comfort(home):
     assert not home.state()["rooms"][2]["custom"]
     with pytest.raises(ValueError):
         home.set_room_comfort("living", 30)
+
+
+def test_realtime_temps_move_within_a_step(monkeypatch):
+    """Mid-step, a raised target shows up as warming straight away (not after 15 minutes)."""
+    from heatwise.live import LiveHome
+
+    home = LiveHome(budget_gbp=30, realtime=True)
+    home.set_room_comfort("living", 23)
+    i = home.room_index("living")
+    start = float(home.house.state.temps[i])
+    monkeypatch.setattr(home, "_step_fraction", lambda: 0.5)
+    temps, q = home._live_temps()
+    if home.targets[i] > start:
+        assert q is not None and q[i] > 0 and temps[i] > start
+    monkeypatch.setattr(home, "_step_fraction", lambda: 0.0)
+    temps0, q0 = home._live_temps()
+    assert q0 is None and float(temps0[i]) == start

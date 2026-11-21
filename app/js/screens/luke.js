@@ -4,6 +4,20 @@ import { button, card, h, haptic } from "../ui.js";
 
 let last = null;  // { q, reply, action, done }
 
+const ROOM_LABEL = { living: "living room" };
+function doneText(a) {
+  if (a.type === "room") {
+    const name = ROOM_LABEL[a.room] || a.room, r = store.state?.rooms?.find(x => x.name === a.room);
+    const now = r && r.target < a.value ? ` Right now it's aiming for ${r.target}° because of your budget trim.` : "";
+    const m = r?.warmup_min, hrs = m >= 90 ? Math.round(m / 30) / 2 : 0;
+    const eta = m > 0 ? ` It should be there in about ${hrs ? `${hrs} hours` : `${m} minutes`}.` : "";
+    return `Done! The ${name} is set to ${a.value}°.${now}${eta}`;
+  }
+  if (a.type === "comfort") return `Done! Rooms in use are set to ${a.value}°. You'll see them warm up over the next hour or so.`;
+  if (a.type === "away") return a.value ? "Done! Away mode is on." : "Done! Away mode is off.";
+  return `Done! Comfort trim is now ${a.value}°.`;
+}
+
 async function send(text) {
   last = { q: text, reply: "Thinking…", action: null };
   store.loading = false; api.load();
@@ -23,9 +37,9 @@ export function lukeCard() {
     h("p", { class: "note", style: "margin:0" }, `You: ${last.q}`),
     h("p", { style: "margin:6px 0 0;font-weight:600" }, `Luke: ${last.reply}`),
     last.action && !last.done ? h("div", { style: "display:flex;gap:8px;margin-top:10px" },
-      button("Yes, do it", async () => { haptic(); last.done = true; await api.confirm(last.action); last.reply = "Done!"; api.load(); }),
+      button("Yes, do it", async () => { haptic(); last.done = true; const r = await api.confirm(last.action); last.reply = r?.ok ? doneText(last.action) : "Sorry, I couldn't make that change."; api.load(); }),
       button("No thanks", () => { last = null; api.load(); }, "quiet")) : null);
-  const intro = h("div", { class: "luke", style: "margin-bottom:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+  const intro = h("div", { class: "luke", style: "margin-bottom:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }),
     h("div", { class: "bubble" }, "Hi, I'm Luke. I look after your heating. Ask me anything, or tell me what you need."));
   return card(intro, h("div", { style: "display:flex;gap:8px" }, input, button("Ask", go, "soft")), answer);
 }

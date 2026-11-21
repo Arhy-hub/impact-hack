@@ -84,7 +84,8 @@ uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
 
 Five tabs (Home, Plan, Budget, Impact, Demo) plus Settings behind the gear on Home:
 
-- **Luke** (Ask Luke, on Home): type “I'm cold”, “I'm going away” or “why is the bedroom cold?”. It answers, or proposes a change you confirm with one tap. Uses Claude if `ANTHROPIC_API_KEY` is set, built-in rules otherwise.
+- **Luke** (Ask Luke, on Home): type “I'm cold”, “make the living room 22”, “I'm going away” or “why is the bedroom cold?”. He answers, or asks “Shall I…?” with a change you confirm with one tap (away, the house temperature, one room's temperature, or the budget trim). Nothing changes until you tap Yes. Uses Claude if `ANTHROPIC_API_KEY` is set (in `.env`), built-in rules otherwise.
+- **Live temperatures:** in live mode the room temperatures move within seconds of a change, not just on the quarter-hour (see DECISIONS D20).
 
 - **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
 - **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.

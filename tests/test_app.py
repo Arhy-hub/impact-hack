@@ -97,3 +97,15 @@ def test_events_limits_jump(client):
     assert client.post("/api/allow").status_code == 200
     s = client.post("/api/jump", json={"day": 3, "hour": 12}).json()
     assert s["clock"] == "Thu 12:00" and s["limits"]["daily_gbp"] == 2
+
+
+def test_confirm_room_action_sets_that_room():
+    from fastapi.testclient import TestClient
+    from heatwise.app import create_app
+
+    client = TestClient(create_app())
+    r = client.post("/api/confirm", json={"type": "room", "room": "kitchen", "value": 21})
+    assert r.status_code == 200
+    kitchen = next(x for x in r.json()["rooms"] if x["name"] == "kitchen")
+    assert kitchen["comfort"] == 21 and kitchen["custom"] is True
+    assert client.post("/api/confirm", json={"type": "room", "room": "attic", "value": 21}).status_code == 422

@@ -71,8 +71,9 @@ class Ask(BaseModel):
 
 
 class Confirm(BaseModel):
-    type: str = Field(pattern=r"^(away|comfort|trim)$")
+    type: str = Field(pattern=r"^(away|comfort|trim|room)$")
     value: bool | float
+    room: str | None = Field(default=None, pattern=r"^(bedroom|kitchen|living)$")
 
 
 class TopUp(BaseModel):
@@ -203,7 +204,8 @@ def create_app(home_factory=default_home) -> FastAPI:
         if not action:
             raise HTTPException(422, "That change isn't allowed.")
         run = {"away": lambda h: h.set_away(action["value"]), "comfort": lambda h: h.set_comfort(action["value"]),
-               "trim": lambda h: h.set_trim(action["value"])}[action["type"]]
+               "trim": lambda h: h.set_trim(action["value"]),
+               "room": lambda h: h.set_room_comfort(action.get("room", ""), action["value"])}[action["type"]]
         return act(run)
 
     @app.post("/api/mode")

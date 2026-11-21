@@ -21,7 +21,8 @@ import re
 from .live import COMFORT_RANGE
 
 ROOMS = {"bedroom": "bedroom", "kitchen": "kitchen", "living": "living", "lounge": "living", "living room": "living"}
-ACTIONS = {"away", "comfort", "trim"}
+ACTIONS = {"away", "comfort", "trim", "room"}
+ROOM_NAMES = set(ROOMS.values())
 
 
 def _room_in(text: str) -> str | None:
@@ -42,12 +43,20 @@ def validate(action: dict | None) -> dict | None:
         return {"type": t, "value": round(float(v) * 2) / 2}
     if t == "trim" and isinstance(v, (int, float)) and 0 <= v <= 3:
         return {"type": t, "value": float(round(v))}
+    if (t == "room" and action.get("room") in ROOM_NAMES and isinstance(v, (int, float))
+            and not isinstance(v, bool) and COMFORT_RANGE[0] <= v <= COMFORT_RANGE[1]):
+        return {"type": t, "room": action["room"], "value": round(float(v) * 2) / 2}
     return None
 
 
 def rule_reply(text: str, state: dict) -> dict:
     t = text.lower().strip()
     comfort = state["comfort_c"]
+    room, num = _room_in(t), re.search(r"\b(1[6-9]|2[0-3])(\.5)?\b", t)
+    if room and num:
+        v = float(num.group(0))
+        label = "living room" if room == "living" else room
+        return {"reply": f"Shall I set the {label} to {v:g}°?", "action": {"type": "room", "room": room, "value": v}}
     if re.search(r"\b(away|leaving|holiday|going out)\b", t) and not re.search(r"\b(back|home now|returned)\b", t):
         return {"reply": "Want me to turn on away mode? Every room rests at 12° until you're back.",
                 "action": {"type": "away", "value": True}}
@@ -75,7 +84,13 @@ def rule_reply(text: str, state: dict) -> dict:
 
 SYSTEM = """You are Luke, Heatwise's friendly helper who looks after the home's heating. Reply in at most two short, warm sentences.
 You may propose ONE action for the user to confirm: {"type":"away","value":true|false},
-{"type":"comfort","value":16-23}, or {"type":"trim","value":0-3}. Never invent numbers: use only the state given.
+{"type":"comfort","value":16-23} (every room's daytime temperature),
+{"type":"room","room":"bedroom"|"kitchen"|"living","value":16-23} (one room's daytime temperature),
+or {"type":"trim","value":0-3} (degrees taken off to save money).
+You cannot change anything yourself: the user taps Yes to apply your action. So whenever the user asks for a change,
+include the action and phrase the reply as a question, like "Shall I set the living room to 22°?".
+Never say you have done, or will do, something without including the action for it.
+If nothing needs changing, or it isn't possible, say so plainly. Never invent numbers: use only the state given.
 Respond with JSON only: {"reply": "...", "action": {...} or null}."""
 
 
@@ -87,7 +102,7 @@ def claude_reply(text: str, state: dict) -> dict | None:
         import anthropic
 
         facts = {"comfort_c": state["comfort_c"], "away": state["away"], "clock": state["clock"],
-                 "price": state["price_level"], "rooms": [{k: r[k] for k in ("name", "temp", "target", "status", "why")} for r in state["rooms"]],
+                 "price": state["price_level"], "rooms": [{k: r[k] for k in ("name", "temp", "target", "comfort", "status", "why")} for r in state["rooms"]],
                  "budget": {k: state["budget"][k] for k in ("spent_gbp", "budget_gbp", "projected_gbp", "manual_trim")}}
         resp = anthropic.Anthropic(timeout=20.0).messages.create(
             model="claude-opus-5-5", max_tokens=1024, system=SYSTEM, output_config={"effort": "low"},
