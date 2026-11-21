@@ -101,3 +101,15 @@ def test_bad_calendar_url_falls_back_to_demo(monkeypatch):
     home = LiveHome(allow_live_signals=False, ical_url="http://not-https.example/cal.ics", supplier=LocalSupplier())
     assert home.calendar_source == "demo" and home.calendar_error
     assert "not-https" not in home.calendar_error
+
+
+def test_realtime_mode_starts_now_with_generated_calendar(monkeypatch):
+    monkeypatch.delenv("HEATWISE_ICAL_URL", raising=False)
+    from heatwise.live import now_step
+    home = LiveHome(allow_live_signals=False, supplier=LocalSupplier(), realtime=True)
+    s = home.state()
+    assert s["mode"] == "realtime"
+    assert home.t == now_step(home.week_start)
+    assert [e["title"] for e in s["calendar"]["upcoming"]][:2] == ["Gym", "WFH"]
+    home.sync()  # never goes backwards
+    assert home.t >= now_step(home.week_start)

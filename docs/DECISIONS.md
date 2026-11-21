@@ -203,3 +203,12 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | A2 | Two engines: keyword rules (always on) and Claude `claude-opus-5-5` at low effort when `ANTHROPIC_API_KEY` is set. Claude's JSON is validated against the same allow-list; any error, refusal or bad output falls back to rules. | The app works offline and without a key; Claude makes it understand messy phrasing. |
 | A3 | Numbers in answers come only from the engine state passed in, never from the model | No made-up savings or temperatures. |
 | A4 | Input capped at 500 characters; `/api/confirm` re-validates every action | Safe to expose. |
+
+### Real-time demo (branch `heatwise-realtime`)
+
+| # | Decision | Why |
+|---|---|---|
+| T1 | **Live mode is the default**: the week starts today, the clock follows real time (UTC, which is London time in winter), and the house catches up to "now" on every request | The demo looks live when opened. |
+| T2 | A **generated calendar around now** (gym in an hour, WFH tomorrow, a trip in two days, friends over in five) when no real calendar is connected | Always something upcoming to show how the calendar changes heating. |
+| T3 | **Fallback to the simulated week** if live mode fails to start (`HEATWISE_MODE=simulated` forces it), plus a Live / Example week switch in Settings → Demo | The demo never dies; the example week can still be fast-forwarded. |
+| T4 | Kept on its own branch | So the stable `heatwise-mvp` stays untouched until the team picks one. |

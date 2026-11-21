@@ -116,6 +116,28 @@ def demo_calendar(week_start: date) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
+def generated_calendar(now: datetime) -> str:
+    """An example calendar built around ``now`` (naive UTC), so a live demo always has
+    something coming up: gym this evening, WFH tomorrow, a trip, friends over."""
+    day = datetime.combine(now.date(), time())
+
+    def at(days: int, hh: int, mm: int = 0) -> str:
+        return (day + timedelta(days=days, hours=hh, minutes=mm)).strftime("%Y%m%dT%H%M%SZ")
+
+    gym = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    events = [
+        ("Gym", gym.strftime("%Y%m%dT%H%M%SZ"), (gym + timedelta(hours=1, minutes=30)).strftime("%Y%m%dT%H%M%SZ")),
+        ("WFH", at(1, 9), at(1, 17)),
+        ("Trip to Manchester", at(2, 7), at(3, 19)),
+        ("Friends over for dinner", at(5, 18), at(5, 23, 30)),
+    ]
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Heatwise//generated//EN"]
+    for i, (title, a, b) in enumerate(events):
+        lines += ["BEGIN:VEVENT", f"UID:gen-{i}@heatwise", f"DTSTAMP:{a}", f"DTSTART:{a}", f"DTEND:{b}", f"SUMMARY:{title}", "END:VEVENT"]
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(lines) + "\r\n"
+
+
 def step_of(dt: datetime, week_start: date) -> int:
     """Simulation step (15 min) of ``dt``, counted from Monday 00:00 of ``week_start``."""
     return int((dt - datetime.combine(week_start, time())).total_seconds() // (STEP_MIN * 60))

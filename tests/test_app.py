@@ -80,3 +80,9 @@ def test_ask_and_confirm(client, monkeypatch):
     assert client.post("/api/confirm", json=r["action"]).json()["away"] is True
     assert client.post("/api/confirm", json={"type": "comfort", "value": 99}).status_code == 422
     assert client.post("/api/ask", json={"text": ""}).status_code == 422
+
+
+def test_mode_switch(client):
+    assert client.post("/api/mode", json={"mode": "realtime"}).json()["mode"] == "realtime"
+    assert client.post("/api/mode", json={"mode": "simulated"}).json()["mode"] == "simulated"
+    assert client.post("/api/mode", json={"mode": "chaos"}).status_code == 422

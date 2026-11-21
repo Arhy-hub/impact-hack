@@ -85,7 +85,18 @@ def default_home() -> LiveHome:
         budget = float(os.environ.get("HEATWISE_BUDGET", "30"))
     except ValueError:
         budget = 30.0
-    return LiveHome(budget_gbp=min(max(budget, 1.0), MAX_TOPUP_GBP))
+    budget = min(max(budget, 1.0), MAX_TOPUP_GBP)
+    mode = os.environ.get("HEATWISE_MODE", "realtime")
+    if mode == "realtime":
+        try:
+            return LiveHome(budget_gbp=budget, realtime=True)
+        except Exception:  # noqa: BLE001 - anything wrong with live mode: use the simulated week
+            pass
+    return LiveHome(budget_gbp=budget)
+
+
+class Mode(BaseModel):
+    mode: str = Field(pattern=r"^(realtime|simulated)$")
 
 
 def create_app(home_factory=default_home) -> FastAPI:
@@ -96,6 +107,7 @@ def create_app(home_factory=default_home) -> FastAPI:
     def act(fn):
         with lock:
             try:
+                holder["home"].sync()
                 extra = fn(holder["home"])
             except ValueError as err:
                 raise HTTPException(422, str(err)) from None
@@ -169,6 +181,16 @@ def create_app(home_factory=default_home) -> FastAPI:
         run = {"away": lambda h: h.set_away(action["value"]), "comfort": lambda h: h.set_comfort(action["value"]),
                "trim": lambda h: h.set_trim(action["value"])}[action["type"]]
         return act(run)
+
+    @app.post("/api/mode")
+    def mode(body: Mode):
+        with lock:
+            home = holder["home"]
+            try:
+                holder["home"] = LiveHome(budget_gbp=home.budget_gbp, realtime=body.mode == "realtime")
+            except Exception:  # noqa: BLE001 - fall back to the simulated week
+                holder["home"] = LiveHome(budget_gbp=home.budget_gbp)
+        return act(lambda h: None)
 
     @app.post("/api/reset")
     def reset():

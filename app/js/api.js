@@ -41,5 +41,6 @@ export const api = {
   calendar: url => call("/api/calendar", { url }),
   tick: steps => call("/api/tick", { steps }),
   reset: () => call("/api/reset", {}),
+  mode: m => call("/api/mode", { mode: m }),
   confirm: action => call("/api/confirm", action),
 };

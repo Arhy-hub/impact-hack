@@ -54,9 +54,17 @@ def this_monday(today: date | None = None) -> date:
     return today - timedelta(days=today.weekday())
 
 
-def clock(step: int) -> str:
+def clock(step: int, start_day: int = 0) -> str:
+    """'Mon 16:00' for a step counted from midnight of weekday ``start_day`` (0 = Monday)."""
     m = (step % STEPS_PER_DAY) * 15
-    return f"{DAY_NAMES[(step // STEPS_PER_DAY) % 7]} {m // 60:02d}:{m % 60:02d}"
+    return f"{DAY_NAMES[(start_day + step // STEPS_PER_DAY) % 7]} {m // 60:02d}:{m % 60:02d}"
+
+
+def now_step(week_start: date, now: datetime | None = None) -> int:
+    """Real-time step (15 min) since midnight of ``week_start``, in UTC (= London time in winter)."""
+    now = now or datetime.now(timezone.utc)
+    midnight = datetime.combine(week_start, datetime.min.time(), tzinfo=timezone.utc)
+    return int((now - midnight).total_seconds() // 900)
 
 
 def apply_calendar_to_people(occ, events, week_start: date) -> None:
@@ -81,6 +89,7 @@ class LiveHome:
         budget_gbp: float = 40.0,
         week_start: date | None = None,
         start_step: int = 16 * 4,  # Monday 16:00
+        realtime: bool = False,  # follow the real clock, starting today (see sync())
         allow_live_signals: bool = True,
         ical_url: str | None = None,
         supplier=None,
@@ -90,7 +99,9 @@ class LiveHome:
         self.seed = seed
         self.rooms = DEFAULT_ROOMS
         self.names = [r.name for r in self.rooms]
-        self.week_start = week_start or this_monday()
+        self.realtime = realtime
+        self.week_start = week_start or (datetime.now(timezone.utc).date() if realtime else this_monday())
+        self.start_day = self.week_start.weekday()
 
         self.signals = get_signals(allow_live=allow_live_signals)
         self.price, self.carbon, self.temp_out = self.signals.per_step(STEPS_PER_DAY)
@@ -104,13 +115,13 @@ class LiveHome:
                 self.calendar_source = "google"
             except Exception as err:  # noqa: BLE001 - fall back to the demo week
                 self.calendar_error = str(err)
-                self.events = cal.parse_ics(cal.demo_calendar(self.week_start))
+                self.events = cal.parse_ics(self._demo_calendar())
                 self.calendar_source = "demo"
         else:
-            self.events = cal.parse_ics(cal.demo_calendar(self.week_start))
+            self.events = cal.parse_ics(self._demo_calendar())
             self.calendar_source = "demo"
 
-        self.occ = simulate_occupancy(7, seed=seed + 1000)
+        self.occ = simulate_occupancy(7, seed=seed + 1000, start_day=self.start_day)
         apply_calendar_to_people(self.occ, self.events, self.week_start)
         train = simulate_occupancy(35, seed=seed)
         self.model = OccupancyModel().fit(train)
@@ -126,7 +137,7 @@ class LiveHome:
             self.supplier.checkout(CUSTOMER, self.budget_gbp)  # the human loads the budget
         self.wallet = Wallet(self.supplier, CUSTOMER)
 
-        self.t = start_step
+        self.t = now_step(self.week_start) if realtime else start_step
         self.start_step = start_step
         self.away_manual = False
         self.manual_trim = 0.0
@@ -205,6 +216,18 @@ class LiveHome:
 
     # ---------- actions ----------
 
+    def _demo_calendar(self) -> str:
+        if self.realtime:
+            return cal.generated_calendar(datetime.now(timezone.utc).replace(tzinfo=None))
+        return cal.demo_calendar(self.week_start)
+
+    def sync(self) -> None:
+        """Real-time mode: catch the simulation up to the real clock (never goes backwards)."""
+        if self.realtime:
+            behind = now_step(self.week_start) - self.t
+            if behind > 0:
+                self.tick(behind)
+
     @property
     def finished(self) -> bool:
         return self.t >= WEEK_STEPS - 1
@@ -247,10 +270,10 @@ class LiveHome:
             events = cal.fetch_ics(url)  # raises without the URL in the message
             source = "google"
         else:
-            events, source = cal.parse_ics(cal.demo_calendar(self.week_start)), "demo"
+            events, source = cal.parse_ics(self._demo_calendar()), "demo"
         self.events, self.calendar_source, self.calendar_error = events, source, None
         # Re-run the simulated household against the new calendar (demo consistency).
-        self.occ = simulate_occupancy(7, seed=self.seed + 1000)
+        self.occ = simulate_occupancy(7, seed=self.seed + 1000, start_day=self.start_day)
         apply_calendar_to_people(self.occ, self.events, self.week_start)
         self.targets, self.reasons = self._decide(self.t)
 
@@ -336,7 +359,7 @@ class LiveHome:
                 rows[name].append("heat" if tg[i] >= comfort_line - 3 and tg[i] > self.settings.eco else
                                   "eco" if tg[i] > self.settings.away else "off")
             levels.append(self._price_level(steps[0] % STEPS_PER_DAY))
-            labels.append(clock(steps[0])[-5:])
+            labels.append(clock(steps[0], self.start_day)[-5:])
         start = datetime.combine(self.week_start, datetime.min.time()) + timedelta(minutes=15 * self.t)
         end = start + timedelta(hours=hours)
         events = [
@@ -378,7 +401,7 @@ class LiveHome:
             start, end = cal.step_of(e.start, self.week_start), cal.step_of(e.end, self.week_start)
             if end > self.t and start < WEEK_STEPS:
                 out.append({"title": e.title, "kind": e.kind, "effect": effect[e.kind],
-                            "start": clock(max(start, 0)), "end": clock(min(end, WEEK_STEPS - 1)),
+                            "start": clock(max(start, 0), self.start_day), "end": clock(min(end, WEEK_STEPS - 1), self.start_day),
                             "now": start <= self.t < end})
         return out
 
@@ -422,7 +445,8 @@ class LiveHome:
                 "why": why,
             })
         return {
-            "clock": clock(t),
+            "clock": clock(t, self.start_day),
+            "mode": "realtime" if self.realtime else "simulated",
             "date": (self.week_start + timedelta(days=t // STEPS_PER_DAY)).isoformat(),
             "greeting": greeting,
             "outside_c": round(float(self.temp_out[s_day]), 1),
