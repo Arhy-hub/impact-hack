@@ -15,6 +15,8 @@ Built for Hack for Impact (Imperial College London, 21 Nov 2026): AI + payments 
 
 That's **8.4% cheaper with 6.3% less CO₂, and people are comfortable far more of the time** (21°C in rooms in use, 18°C bedroom overnight; offline signals snapshot, `python -m heatwise.run_toy --offline`). With a £40 weekly budget, the agent trims comfort by up to 2° and finishes at £39.56.
 
+**Against timers that keep people warm** (`python -m heatwise.compare_timers`, DECISIONS D29): the usual timer only looks cheap because it leaves people cold. In a 5-room house with a spare room and study, Heatwise is **15% cheaper with 13% less CO₂** than the usual timer (97% vs 70% comfort), and **16% cheaper with 21% less CO₂** than heating left on 24/7. Unused rooms are where the saving grows.
+
 The occupancy model (routine plus live motion) predicts room use better than the routine heatmap alone: Brier score **0.021 vs 0.029**.
 
 ## How it works
@@ -130,6 +132,7 @@ heatwise/
   supplier.py    energy supplier behind a paywall (local or SolvaPay)
   wallet.py      agent pays per step, buys blocks, emergency credit, top-up requests
   compare.py     run a week, score cost / CO2 / comfort
+  compare_timers.py  Heatwise vs timers that keep people warm, 3 and 5 rooms
   run_toy.py     the end-to-end toy run; writes web/data.json
 web/             analyst results page for judges (index.html + generated data.json)
 data/            saved signals snapshot for offline runs

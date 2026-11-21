@@ -54,12 +54,16 @@ def run_week(
     settings: Settings = Settings(),
     start_temp: float = 18.0,
     comfort_tolerance: float = 1.0,
+    timer=timer_targets,
+    rooms=None,
 ) -> WeekResult:
     """Simulate ``occ.n_steps`` steps with ``strategy`` in {"heatwise", "timer"}.
 
     The same day of signals repeats every day (toy version; see DECISIONS R1).
     With a ``wallet``, every step's electricity is paid for through it. While a
     top-up is pending, Heatwise holds every room at the safety floor.
+    ``timer`` swaps in another timer schedule (same signature as
+    ``timer_targets``); ``rooms`` builds a different house (see ``compare_timers``).
     """
     if strategy not in ("heatwise", "timer"):
         raise ValueError(strategy)
@@ -68,7 +72,7 @@ def run_week(
 
     price, carbon, temp_out = signals.per_step(STEPS_PER_DAY)
     day_scores = slot_scores(price, carbon, settings)
-    house = House()
+    house = House(rooms=rooms) if rooms is not None else House()
     house.state.temps[:] = start_temp
     n, r = occ.n_steps, len(occ.rooms)
     temps = np.zeros((n, r))
@@ -84,7 +88,7 @@ def run_week(
         s = t % STEPS_PER_DAY
         temps[t] = house.state.temps
         if strategy == "timer":
-            tg = timer_targets(t, occ.weekday(t), r, settings)
+            tg = timer(t, occ.weekday(t), r, settings)
         elif wallet is not None and wallet.needs_topup:
             tg = np.full(r, settings.away)
         else:
