@@ -109,6 +109,11 @@ class Limits(BaseModel):
     daily_off: bool = False
 
 
+class RoomComfort(BaseModel):
+    room: str = Field(pattern=r"^[a-z_]{1,32}$")
+    temp: float | None = Field(None, ge=16, le=23)
+
+
 class Jump(BaseModel):
     day: int = Field(ge=0, le=6)
     hour: int = Field(ge=0, le=23)
@@ -223,6 +228,10 @@ def create_app(home_factory=default_home) -> FastAPI:
     def limits(body: Limits):
         return act(lambda h: h.set_limits(body.weekly_gbp, body.daily_gbp, body.daily_off))
 
+    @app.post("/api/room_comfort")
+    def room_comfort(body: RoomComfort):
+        return act(lambda h: h.set_room_comfort(body.room, body.temp))
+
     @app.post("/api/allow")
     def allow():
         return act(lambda h: h.allow_more(2.0))
@@ -238,6 +247,7 @@ def create_app(home_factory=default_home) -> FastAPI:
             new.events = list(old.events)
             new._refresh_people()
             new.daily_cap_gbp, new.away_manual, new.manual_trim = old.daily_cap_gbp, old.away_manual, old.manual_trim
+            new.room_comfort = dict(old.room_comfort)
             target = body.day * 96 + body.hour * 4
             if target > new.t:
                 new.tick(target - new.t)

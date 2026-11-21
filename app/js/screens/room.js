@@ -1,6 +1,7 @@
 // Room: why is this room at this temperature, and when will it heat today?
 import { deg, roomMood, roomName, time12 } from "../format.js";
-import { card, empty, h, heading, lineChart, meter, note } from "../ui.js";
+import { api } from "../api.js";
+import { button, card, empty, h, heading, lineChart, meter, note, stepper } from "../ui.js";
 
 function nextHeating(cells, hours) {
   const start = cells.indexOf("heat");
@@ -23,6 +24,13 @@ export function render({ state }, nav, roomId) {
       h("div", { class: "big" }, deg(r.temp)),
       h("div", { class: "say" }, `Aiming for ${r.target.toFixed(0)}°`)),
     card(meter(r.temp, r.target, { heating: r.heating })),
+    heading("Set this room"),
+    card(
+      h("div", { class: "line" }, h("span", {}, "Comfy temperature"),
+        stepper(r.comfort, { min: 16, max: 23, step: 0.5, onChange: v => api.roomComfort(r.name, v), label: `${roomName(r.name)} temperature`, format: v => `${v}°` })),
+      note(r.custom ? "This room has its own setting. Heatwise still only heats it when someone's likely to be in."
+        : "Following the house setting. Change it to give this room its own temperature."),
+      r.custom ? h("div", { style: "margin-top:8px" }, button("Use the house setting", () => api.roomComfort(r.name, null), "quiet")) : null),
     heading("Why?"),
     card(h("p", { style: "margin:0" }, r.why)),
     heading("Last 24 hours"),

@@ -154,6 +154,7 @@ class LiveHome:
         self.kwh = np.zeros(WEEK_STEPS)
         # Limits: the weekly budget is budget_gbp; the daily cap is off until set.
         self.daily_cap_gbp: float | None = None
+        self.room_comfort: dict[int, float] = {}  # per-room daytime temperature, overrides the house setting
         self.extra_allowed_p: dict[int, float] = {}
         # What happened, in plain words, for the demo feed (Luke narrates it).
         self.log: list[dict] = []
@@ -199,6 +200,9 @@ class LiveHome:
             people_home = int(self.occ.people_home[t])
         trim = self._trim() if trim is None else trim
         comfort = comfort_targets(t, n, s)
+        for i, c in self.room_comfort.items():
+            if not (self.names[i] == "bedroom" and comfort[i] < s.comfort):  # bedroom keeps its night setting
+                comfort[i] = c
         targets, reasons = decide(motion, p_soon, people_home, self.day_scores[s_day], self.day_scores,
                                   trim, s, comfort)
 
@@ -410,6 +414,18 @@ class LiveHome:
         self.settings = replace(self.settings, comfort=float(temp))
         self.targets, self.reasons = self._decide(self.t)
 
+    def set_room_comfort(self, room: str, temp: float | None) -> None:
+        """Daytime temperature for one room, or None to follow the house setting."""
+        i = self.room_index(room)
+        if temp is None:
+            self.room_comfort.pop(i, None)
+        else:
+            lo, hi = COMFORT_RANGE
+            if not lo <= temp <= hi:
+                raise ValueError(f"comfort must be {lo:.0f} to {hi:.0f}°C")
+            self.room_comfort[i] = float(temp)
+        self.targets, self.reasons = self._decide(self.t)
+
     def set_calendar(self, url: str) -> None:
         """Connect a secret iCal URL, or pass "" to go back to the demo week.
 
@@ -604,6 +620,8 @@ class LiveHome:
                 "temp": round(float(self.house.state.temps[i]), 1),
                 "target": round(float(self.targets[i]), 1),
                 "heating": bool(self.last_kwh[i] > 1e-4),
+                "comfort": self.room_comfort.get(i, self.settings.comfort),
+                "custom": i in self.room_comfort,
                 "status": chip,
                 "why": why,
             })

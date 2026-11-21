@@ -42,6 +42,7 @@ export const api = {
   tick: steps => call("/api/tick", { steps }),
   reset: () => call("/api/reset", {}),
   limits: body => call("/api/limits", body),
+  roomComfort: (room, temp) => call("/api/room_comfort", { room, temp }),
   allow: () => call("/api/allow", {}),
   addEvent: e => call("/api/events", e),
   removeEvent: i => call(`/api/events/${i}`, undefined, "DELETE"),

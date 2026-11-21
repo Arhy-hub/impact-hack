@@ -133,3 +133,14 @@ def test_events_limits_log_impact(home):
     assert imp["ready"] and imp["timer_kg"] > 0
     with pytest.raises(ValueError):
         home.set_limits(daily_gbp=100)
+
+
+def test_room_comfort(home):
+    home.tick(96 + 48 - home.t)  # Tue noon, living room in use (WFH)
+    home.set_room_comfort("living", 22)
+    living = home.state()["rooms"][2]
+    assert living["custom"] and living["comfort"] == 22 and living["target"] >= 21
+    home.set_room_comfort("living", None)
+    assert not home.state()["rooms"][2]["custom"]
+    with pytest.raises(ValueError):
+        home.set_room_comfort("living", 30)

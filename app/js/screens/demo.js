@@ -7,7 +7,7 @@ import { button, card, empty, ghosts, h, heading, icon, note, seg } from "../ui.
 export const title = "Demo";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const KINDS = [{ id: "away", label: "Away" }, { id: "wfh", label: "Working from home" }, { id: "guests", label: "Guests" }];
-let playing = null, speed = 4, form = null;
+let playing = null, speed = 1, form = null;  // steps of 15 min per tick
 
 function stop() { if (playing) { clearInterval(playing); playing = null; } }
 function play() {
@@ -15,7 +15,7 @@ function play() {
   playing = setInterval(async () => {
     const r = await api.tick(speed);
     if (!r.ok || store.state?.finished) { stop(); api.load(); }
-  }, 1000);
+  }, 1500);
   api.load();
 }
 
@@ -54,7 +54,7 @@ export function render({ state, loading, error }) {
       h("div", { style: "display:flex;gap:10px;align-items:center" },
         button([icon(playing ? "pause" : "play", 18), playing ? " Pause" : " Play the week"], play, "", { style: "flex:1" }),
         button("Restart", () => { stop(); api.reset(); }, "quiet")),
-      h("div", { style: "margin-top:12px" }, seg([{ id: 4, label: "1 hour / sec" }, { id: 24, label: "6 hours / sec" }].map(o => ({ ...o, id: String(o.id) })),
+      h("div", { style: "margin-top:12px" }, seg([{ id: 1, label: "Slow" }, { id: 2, label: "Normal" }, { id: 8, label: "Fast" }].map(o => ({ ...o, id: String(o.id) })),
         String(speed), v => { speed = Number(v); api.load(); }, "Speed")),
       h("div", { class: "small muted", style: "margin:12px 0 6px" }, "Jump to"),
       h("div", { class: "days" }, DAYS.map((d, i) => button(d, () => { stop(); api.jump(i, 7); }, "quiet")))),
