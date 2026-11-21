@@ -35,8 +35,9 @@ from .controller import (
 )
 from .occupancy import HeatmapBaseline, OccupancyModel
 from .signals import get_signals
+from .repairs import COMPANY, Maintenance
 from .sim import (
-    DAY_NAMES, DEFAULT_ROOMS, STEPS_PER_DAY, WEEKDAY_ROUTINES, WEEKEND_ROUTINES, House, simulate_occupancy,
+    DAY_NAMES, DEFAULT_ROOMS, STEP_H, STEPS_PER_DAY, WEEKDAY_ROUTINES, WEEKEND_ROUTINES, House, simulate_occupancy,
 )
 from .supplier import LocalSupplier, make_supplier
 from .wallet import Wallet
@@ -145,6 +146,7 @@ class LiveHome:
         self.prior_daily_p = typical.cost_gbp * 100 / 7
 
         self.house = House(self.rooms)
+        self.maint = Maintenance(len(self.rooms))  # faults, repairs and the repairs allowance (D27)
         self.supplier = supplier or make_supplier()
         self.budget_gbp = float(budget_gbp)
         if isinstance(self.supplier, LocalSupplier):
@@ -358,7 +360,19 @@ class LiveHome:
             t, s_day = self.t, self.t % STEPS_PER_DAY
             self.targets, self.reasons = self._decide(t)
             q = self.house.heat_needed_kw(self.targets, self.temp_out[s_day])
-            self.last_kwh = self.house.step(q, self.temp_out[s_day])
+            before = self.house.state.temps.copy()
+            # A faulty radiator delivers only part of its heat, but the electricity is still used (and paid for).
+            self.house.step(q * self.maint.efficiency, self.temp_out[s_day])
+            self.last_kwh = q * STEP_H / self.house.cop
+            for issue in self.maint.observe(t, before, self.house.state.temps, q, self.rooms,
+                                            float(self.temp_out[s_day]), STEP_H):
+                self._say("repair", f"The {self._room_label(issue.room)} is warming much slower than it should: "
+                          f"+{issue.actual_c:.1f}° in the last 2 hours when I expected +{issue.expected_c:.1f}°. "
+                          f"The radiator valve may be stuck. I can book an engineer for £{issue.quote_gbp:.0f} "
+                          "from your repairs allowance.", t)
+            for issue in self.maint.visits_due(t + 1):
+                self._say("repair", f"The engineer has fixed the {self._room_label(issue.room)} radiator. "
+                          "It's warming normally again.", t)
             kwh = float(self.last_kwh.sum())
             blocks_before = self.wallet.blocks_bought
             self.wallet.pay(t, kwh, float(self.price[s_day]), float(self.carbon[s_day]))
@@ -422,6 +436,33 @@ class LiveHome:
         return {"ready": True, "saved_gbp": round((timer_p - hw_p) / 100, 2), "saved_kg": round((timer_g - hw_g) / 1000, 2),
                 "heatwise_kg": round(hw_g / 1000, 2), "timer_kg": round(timer_g / 1000, 2),
                 "clean_share": round(float(kwh[cheap].sum() / kwh.sum()) * 100) if kwh.sum() > 0 else 0, "days": days}
+
+    # ---------- repairs (D27) ----------
+
+    def _room_label(self, i: int) -> str:
+        return DISPLAY.get(self.names[i], self.names[i])
+
+    def break_room(self, room: str) -> None:
+        """Demo: make one room's radiator faulty, so Luke has something to spot."""
+        self.maint.break_room(self.room_index(room))
+
+    def book_repair(self, issue_id: int) -> None:
+        issue = self.maint.book(issue_id, self.t)
+        self._say("repair", f"Booked {COMPANY} for {clock(issue.visit_step, self.start_day)}. Paid £{issue.quote_gbp:.0f} "
+                  f"from your repairs allowance (£{self.maint.allowance_gbp - self.maint.spent_gbp:.0f} left).")
+
+    def dismiss_issue(self, issue_id: int) -> None:
+        issue = self.maint.dismiss(issue_id)
+        self._say("repair", f"OK, I won't book anything for the {self._room_label(issue.room)} for now.")
+
+    def report(self) -> dict:
+        """Luke's week in a few numbers: money, savings and problems handled."""
+        imp, b = self.impact(), self.budget()
+        fixed = sum(x.status == "fixed" for x in self.maint.issues)
+        open_ = sum(x.status in ("found", "booked") for x in self.maint.issues)
+        return {"spent_gbp": b["spent_gbp"], "budget_gbp": b["budget_gbp"],
+                "saved_gbp": imp.get("saved_gbp"), "saved_kg": imp.get("saved_kg"),
+                "repairs_gbp": round(self.maint.spent_gbp, 2), "fixed": fixed, "open": open_}
 
     def room_index(self, name: str) -> int:
         if name not in self.names:
@@ -708,7 +749,7 @@ class LiveHome:
         s_day = self.t % STEPS_PER_DAY
         ahead = copy.deepcopy(self.house)
         q = ahead.heat_needed_kw(self.targets, self.temp_out[s_day])
-        ahead.step(q, self.temp_out[s_day])
+        ahead.step(q * self.maint.efficiency, self.temp_out[s_day])
         return temps + f * (ahead.state.temps - temps), q
 
     def state(self) -> dict:
@@ -750,6 +791,11 @@ class LiveHome:
             "away": self.away_manual,
             "rooms": rooms,
             "people": self.people(t),
+            "repairs": self.maint.summary(self.names, lambda s: clock(s, self.start_day)),
+            "report": self.report(),
+            "rules": {"weekly_gbp": self.budget_gbp, "daily_gbp": self.daily_cap_gbp, "comfort_c": self.settings.comfort,
+                      "sleep_c": self.settings.sleep, "floor_c": self.settings.away,
+                      "repairs_gbp": self.maint.allowance_gbp},
             "routine": self.routine(t),
             "budget": self.budget(),
             "plan": self.plan(),

@@ -110,6 +110,19 @@ class Limits(BaseModel):
     daily_off: bool = False
 
 
+class Repair(BaseModel):
+    issue: int = Field(ge=1, le=1000)
+    action: str = Field(pattern=r"^(book|dismiss)$")
+
+
+class BreakRoom(BaseModel):
+    room: str = Field(pattern=r"^(bedroom|kitchen|living)$")
+
+
+class Allowance(BaseModel):
+    gbp: float = Field(ge=0, le=500)
+
+
 class RoomComfort(BaseModel):
     room: str = Field(pattern=r"^[a-z_]{1,32}$")
     temp: float | None = Field(None, ge=16, le=23)
@@ -234,6 +247,20 @@ def create_app(home_factory=default_home) -> FastAPI:
     def room_comfort(body: RoomComfort):
         return act(lambda h: h.set_room_comfort(body.room, body.temp))
 
+    @app.post("/api/repair")
+    def repair(body: Repair):
+        """The user approves (book) or declines (dismiss) Luke's repair offer (D27)."""
+        return act(lambda h: h.book_repair(body.issue) if body.action == "book" else h.dismiss_issue(body.issue))
+
+    @app.post("/api/break")
+    def break_room(body: BreakRoom):
+        """Demo: make one room's radiator faulty so Luke can spot it."""
+        return act(lambda h: h.break_room(body.room))
+
+    @app.post("/api/repairs_allowance")
+    def repairs_allowance(body: Allowance):
+        return act(lambda h: h.maint.set_allowance(body.gbp))
+
     @app.post("/api/allow")
     def allow():
         return act(lambda h: h.allow_more(2.0))
@@ -250,6 +277,7 @@ def create_app(home_factory=default_home) -> FastAPI:
             new._refresh_people()
             new.daily_cap_gbp, new.away_manual, new.manual_trim = old.daily_cap_gbp, old.away_manual, old.manual_trim
             new.room_comfort = dict(old.room_comfort)
+            new.maint.allowance_gbp = old.maint.allowance_gbp
             target = body.day * 96 + body.hour * 4
             if target > new.t:
                 new.tick(target - new.t)
