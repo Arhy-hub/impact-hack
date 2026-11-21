@@ -58,19 +58,12 @@ export function render({ state, loading, error }) {
       h("div", { class: "line" }, h("span", {}, "Comfy temperature"),
         stepper(state.comfort_c, { min: 16, max: 23, step: 0.5, onChange: v => api.comfort(v), label: "comfy temperature", format: v => `${v}°` })),
       note("Used in rooms you're in. Bedrooms cool to 17° overnight for better sleep.")),
-    heading("Demo"),
+    heading("Demo mode"),
     card(
-      seg([{ id: "realtime", label: "Live" }, { id: "simulated", label: "Example week" }], state.mode,
+      seg([{ id: "simulated", label: "Example week" }, { id: "realtime", label: "Live" }], state.mode,
         m => { stopPlaying(); api.mode(m); }, "Demo mode"),
       note(state.mode === "realtime"
         ? "Follows the real time and today's prices, with an example calendar."
-        : "A made-up week you can fast-forward."),
-      h("div", { style: "height:12px" }),
-      line(state.mode === "realtime" ? "Time" : "Pretend time", state.finished ? `${state.clock} (end of week)` : state.clock),
-      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" },
-        button("+1 hour", () => api.tick(4), "soft", { disabled: state.finished || null }),
-        button(playing ? "Pause" : "Play", toggle, "soft", { disabled: (state.finished && !playing) || null }),
-        button("Start again", () => { stopPlaying(); api.reset(); }, "quiet")),
-      note("The home and its people are simulated. Prices, grid carbon and weather are real.")),
+        : "A made-up week you can play through from the Demo tab.")),
   ];
 }

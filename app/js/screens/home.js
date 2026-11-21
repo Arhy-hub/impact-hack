@@ -1,8 +1,8 @@
 // Home: how warm is my home, and what is it doing? Primary action: Away.
 import { api } from "../api.js";
-import { askCard } from "./ask.js";
+import { lukeCard } from "./luke.js";
 import { PRICE, deg, greeting, roomMood, roomName, time12 } from "../format.js";
-import { badge, card, empty, ghosts, h, heading, icon, meter, pill, toggle } from "../ui.js";
+import { badge, button, card, empty, ghosts, h, heading, icon, meter, pill, toggle } from "../ui.js";
 
 export const title = "Home";
 
@@ -30,7 +30,11 @@ export function render({ state, loading, error }, nav) {
       h("div", {}, h("h1", { class: "hello" }, greeting(s.clock)), h("div", { class: "date" }, s.mode === "realtime"
         ? `Live · updated ${new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(" ", "")}`
         : `Example week · ${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
-      toggle(s.away, on => api.away(on), "Away")),
+      h("div", { style: "display:flex;gap:8px;align-items:center" }, toggle(s.away, on => api.away(on), "Away"),
+        h("button", { class: "toggle", style: "padding:10px", "aria-label": "Settings", onclick: () => nav.push("settings") }, icon("gear", 20)))),
+    s.limits?.daily_hit ? card(h("div", { class: "luke" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+      h("div", { class: "bubble" }, "We've hit today's spending limit, so I'm keeping things gentle. Allow £2 more?",
+        h("div", { style: "display:flex;gap:8px;margin-top:8px" }, button("Allow £2", () => api.allow()), button("Keep saving", () => {}, "quiet"))))) : null,
     h("section", { class: "hero", "aria-label": `Inside ${deg(avg)}. ${sentence(s)}` },
       h("div", { class: "label" }, "Inside right now"),
       h("div", { class: "big" }, deg(avg)),
@@ -39,8 +43,8 @@ export function render({ state, loading, error }, nav) {
       pill("bolt", `${price.text} · ${s.price_p.toFixed(0)}p`, price.tone),
       pill("thermo", `${s.outside_c.toFixed(0)}° outside`),
       pill("leaf", clean ? "Clean energy now" : "Busy grid now", clean ? "calm" : "")),
-    heading("Ask Heatwise"),
-    askCard(),
+    heading("Ask Luke"),
+    lukeCard(),
     heading("Your rooms"),
     s.rooms.map(r => {
       const mood = roomMood(r);

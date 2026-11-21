@@ -1,7 +1,7 @@
 // Budget: am I on track this week? Primary action: Add money.
 import { api, store } from "../api.js";
 import { co2Like, gbp } from "../format.js";
-import { badge, button, card, empty, ghosts, h, heading, line, note, ring, sheet, stepper } from "../ui.js";
+import { badge, barChart, button, card, empty, ghosts, h, heading, line, note, ring, sheet, stepper } from "../ui.js";
 
 export const title = "Budget";
 
@@ -34,6 +34,23 @@ export function render({ state, loading, error }) {
           h("p", { class: "note" }, `By Sunday you'll have spent about ${gbp(b.projected_gbp)}.`),
           b.credit_left_gbp != null ? h("p", { class: "note" }, `${gbp(b.credit_left_gbp)} left to spend.`) : null)),
       h("div", { style: "margin-top:16px" }, button("Add money", addMoney, "wide"))),
+    heading("Spent each day"),
+    card(barChart(state.days.map(d => ({ label: d.day, values: [d.spent_gbp], highlight: d.today })), ["var(--accent)"],
+      { refLine: state.limits.daily_gbp, unit: "£", ariaLabel: "Money spent on heating each day" })),
+    heading("Your limits"),
+    card(
+      h("div", { class: "line" }, h("span", {}, "Weekly budget"),
+        stepper(state.limits.weekly_gbp, { min: 5, max: 200, step: 5, onChange: v => api.limits({ weekly_gbp: v }), label: "weekly budget", format: v => `£${v}` })),
+      h("div", { class: "line" }, h("span", {}, "Daily limit"),
+        state.limits.daily_gbp == null
+          ? button("Set a daily limit", () => api.limits({ daily_gbp: 3 }), "soft")
+          : stepper(state.limits.daily_gbp, { min: 1, max: 10, step: 1, onChange: v => api.limits({ daily_gbp: v }), label: "daily limit", format: v => `£${v}` })),
+      state.limits.daily_hit ? h("div", { class: "luke", style: "margin-top:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+        h("div", { class: "bubble" }, h("div", {}, "You've hit today's limit. Shall I spend £2 more to keep you comfortable?"),
+          h("div", { style: "display:flex;gap:8px;margin-top:8px" }, button("Allow £2", () => api.allow()), button("Keep saving", () => {}, "quiet")))) : null,
+      note(`Heatwise never lets a room go below ${state.limits.floor_c}°, whatever the limits.` +
+        (state.limits.daily_gbp != null ? ` Today so far: £${state.limits.today_spent_gbp.toFixed(2)}.` : "")),
+      state.limits.daily_gbp != null ? h("div", { style: "margin-top:8px" }, button("Turn off daily limit", () => api.limits({ daily_off: true }), "quiet")) : null),
     heading("Save a bit more"),
     card(
       h("div", { class: "line" }, h("span", {}, "Turn every room down"),

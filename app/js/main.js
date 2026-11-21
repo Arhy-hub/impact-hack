@@ -7,14 +7,17 @@ import * as room from "./screens/room.js";
 import * as budget from "./screens/budget.js";
 import * as schedule from "./screens/schedule.js";
 import * as settings from "./screens/settings.js";
+import * as impact from "./screens/impact.js";
+import * as demo from "./screens/demo.js";
 
 const TABS = [
   { id: "home", label: "Home", icon: "home", screen: home },
-  { id: "budget", label: "Budget", icon: "budget", screen: budget },
   { id: "schedule", label: "Plan", icon: "schedule", screen: schedule },
-  { id: "settings", label: "Settings", icon: "settings", screen: settings },
+  { id: "budget", label: "Budget", icon: "budget", screen: budget },
+  { id: "impact", label: "Impact", icon: "leaf", screen: impact },
+  { id: "demo", label: "Demo", icon: "play", screen: demo },
 ];
-const PUSHED = { room };
+const PUSHED = { room, settings: { render: (st, nav) => settings.render(st, nav) } };
 
 // Preview helpers for design review: ?theme=dark|light and ?text=xl (largest text size).
 const params = new URLSearchParams(location.search);

@@ -360,8 +360,7 @@ class LiveHome:
                             IN_USE: f"Someone's in the {name}, keeping it cosy.",
                             ECO: f"Letting the {name} rest, nobody's expected.",
                             AWAY: f"Nobody's home, so the {name} is resting.",
-                            CAL_RETURN: f"Warming the {name} before you get back.",
-                            DAILY_LIMIT: f"Today's limit is reached, so I'm keeping the {name} gentle."}.get(new)
+                            CAL_RETURN: f"Warming the {name} before you get back."}.get(new)
                     if text:
                         self._say("room", text, t)
         if self.daily_limit_hit(t) and DAILY_LIMIT not in self._last_why and DAILY_LIMIT in whys:

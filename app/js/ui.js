@@ -37,6 +37,9 @@ const PATHS = {
   laptop: "M5 6h14v9H5zM3 18h18",
   people: "M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M16 11a2.5 2.5 0 1 0 0-5M17.5 14c2 .4 3.5 2 3.5 5",
   calendar: "M7 3.5v3M17 3.5v3M4.5 9.5h15M5.5 5.5h13a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1z",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-1-3-2 .3-1.3-1.3.3-2-3-1-1 2h-2l-1-2-3 1 .3 2L5.6 8.3 3.6 8l-1 3 2 1v2l-2 1 1 3 2-.3 1.3 1.3-.3 2 3 1 1-2h2l1 2 3-1-.3-2 1.3-1.3 2 .3 1-3-2-1z",
+  play: "M7 5v14l12-7z",
+  pause: "M8 5v14M16 5v14",
   bulb: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z",
   offline: "M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.4M19 13a10 10 0 0 0-2.6-1.8M12 20h.01",
 };
@@ -86,11 +89,52 @@ export function ring(fraction, big, small) {
     h("div", { class: "center" }, h("div", {}, h("b", {}, big), h("span", {}, small))));
 }
 
-// 24 hourly blocks with labels under them.
-export function strip(cells, labels, ariaLabel) {
-  return h("div", { role: "img", "aria-label": ariaLabel },
-    h("div", { class: "strip" }, cells.map(c => h("i", { class: c }))),
-    h("div", { class: "strip-labels" }, labels.map(l => h("span", {}, l))));
+// Simple line chart. series: [{ values: [number|null], colour: "var(--accent)", dashed, label }]
+export function lineChart(labels, series, { min = 10, max = 24, unit = "°", ariaLabel = "" } = {}) {
+  const W = 320, H = 150, L = 28, B = 22, T = 10;
+  const n = Math.max(labels.length, 2);
+  const x = i => L + ((W - L - 6) * i) / (n - 1);
+  const y = v => T + (H - T - B) * (1 - (Math.min(max, Math.max(min, v)) - min) / (max - min));
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg", role: "img", "aria-label": ariaLabel });
+  for (const v of [min, Math.round((min + max) / 2), max]) {
+    svg.append(svgEl("line", { x1: L, x2: W, y1: y(v), y2: y(v), class: "grid" }));
+    const t = svgEl("text", { x: 0, y: y(v) + 4, class: "axis" }); t.textContent = `${v}${unit}`; svg.append(t);
+  }
+  [0, Math.floor((n - 1) / 2), n - 1].forEach(i => {
+    if (labels[i] == null) return;
+    const t = svgEl("text", { x: x(i), y: H - 4, class: "axis", "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle" });
+    t.textContent = labels[i]; svg.append(t);
+  });
+  for (const s of series) {
+    const pts = s.values.map((v, i) => (v == null ? null : `${x(i)},${y(v)}`)).filter(Boolean);
+    if (pts.length > 1) svg.append(svgEl("polyline", { points: pts.join(" "), fill: "none", stroke: s.colour,
+      "stroke-width": s.dashed ? 2 : 3, "stroke-dasharray": s.dashed ? "5 5" : "", "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  }
+  return h("div", { class: "chart" }, svg, h("div", { class: "legend" },
+    series.map(s => h("span", {}, h("i", { style: `background:${s.colour}` }), s.label))));
+}
+
+// Simple bar chart. groups: [{ label, values: [number], highlight }], colours per value index.
+export function barChart(groups, colours, { refLine = null, unit = "", ariaLabel = "", names = [] } = {}) {
+  const W = 320, H = 150, B = 22, T = 14;
+  const maxV = Math.max(refLine || 0, ...groups.flatMap(g => g.values), 0.01) * 1.1;
+  const gw = W / groups.length, per = Math.min(22, (gw - 10) / colours.length);
+  const y = v => T + (H - T - B) * (1 - v / maxV);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg", role: "img", "aria-label": ariaLabel });
+  svg.append(svgEl("line", { x1: 0, x2: W, y1: y(0), y2: y(0), class: "grid" }));
+  groups.forEach((g, gi) => {
+    const x0 = gi * gw + (gw - per * colours.length) / 2;
+    g.values.forEach((v, vi) => svg.append(svgEl("rect", { x: x0 + vi * per + 1, width: per - 2, y: y(v), height: Math.max(y(0) - y(v), 0),
+      rx: 4, fill: colours[vi], opacity: g.dim ? 0.35 : 1 })));
+    const t = svgEl("text", { x: gi * gw + gw / 2, y: H - 4, class: "axis" + (g.highlight ? " strong" : ""), "text-anchor": "middle" });
+    t.textContent = g.label; svg.append(t);
+  });
+  if (refLine) {
+    svg.append(svgEl("line", { x1: 0, x2: W, y1: y(refLine), y2: y(refLine), stroke: "var(--ink)", "stroke-dasharray": "4 4", "stroke-width": 1.5 }));
+    const t = svgEl("text", { x: W, y: y(refLine) - 4, class: "axis", "text-anchor": "end" }); t.textContent = `limit ${unit}${refLine}`; svg.append(t);
+  }
+  return h("div", { class: "chart" }, svg, names.length ? h("div", { class: "legend" },
+    names.map((nm, i) => h("span", {}, h("i", { style: `background:${colours[i]}` }), nm))) : null);
 }
 
 export function legend(items) {

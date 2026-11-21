@@ -1,4 +1,4 @@
-// "Ask Heatwise" card: type a question or request; changes need a tap to confirm.
+// Luke, the helper agent: ask a question or request; any change needs a tap to confirm.
 import { api, store } from "../api.js";
 import { button, card, h, haptic } from "../ui.js";
 
@@ -15,15 +15,17 @@ async function send(text) {
   api.load();
 }
 
-export function askCard() {
-  const input = h("input", { class: "field", placeholder: "e.g. I'm cold", "aria-label": "Ask Heatwise", maxlength: 500 });
+export function lukeCard() {
+  const input = h("input", { class: "field", placeholder: "e.g. I'm cold", "aria-label": "Ask Luke", maxlength: 500 });
   const go = () => { const t = input.value.trim(); if (t) send(t); };
   input.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
   const answer = last && h("div", { style: "margin-top:12px" },
     h("p", { class: "note", style: "margin:0" }, `You: ${last.q}`),
-    h("p", { style: "margin:6px 0 0;font-weight:600" }, last.reply),
+    h("p", { style: "margin:6px 0 0;font-weight:600" }, `Luke: ${last.reply}`),
     last.action && !last.done ? h("div", { style: "display:flex;gap:8px;margin-top:10px" },
       button("Yes, do it", async () => { haptic(); last.done = true; await api.confirm(last.action); last.reply = "Done!"; api.load(); }),
       button("No thanks", () => { last = null; api.load(); }, "quiet")) : null);
-  return card(h("div", { style: "display:flex;gap:8px" }, input, button("Ask", go, "soft")), answer);
+  const intro = h("div", { class: "luke", style: "margin-bottom:12px" }, h("span", { class: "avatar", "aria-hidden": "true" }, "L"),
+    h("div", { class: "bubble" }, "Hi, I'm Luke. I look after your heating. Ask me anything, or tell me what you need."));
+  return card(intro, h("div", { style: "display:flex;gap:8px" }, input, button("Ask", go, "soft")), answer);
 }
