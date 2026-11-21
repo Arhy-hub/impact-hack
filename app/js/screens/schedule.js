@@ -28,18 +28,16 @@ export function render({ state, loading, error }) {
 
   return [
     h("div", { class: "top" }, h("div", {}, h("h1", { class: "hello" }, "Today's plan"), h("div", { class: "date" }, `Next 24 hours from ${time12(state.clock.slice(4))}`))),
-    // A plain, time-ordered list: when each room heats. No charts.
-    (() => {
-      const rows = Object.entries(p.rooms)
-        .flatMap(([name, cells]) => runs(cells, "heat").map(([a, b]) => ({ name, a, b })))
-        .sort((x, y) => x.a - y.a);
-      return card(rows.length
-        ? rows.map(r => h("div", { class: "event" }, badge("flame", "hot"),
-            h("div", { style: "flex:1" }, h("div", { class: "t" }, roomName(r.name)), h("div", { class: "note", style: "margin:0" }, r.a === 0 ? "Heating now" : "Warms up")),
-            h("div", { class: "t" }, `${at(r.a)}–${at(r.b)}`)))
-        : h("p", { style: "margin:0" }, "Nothing needs heating in the next 24 hours."));
-    })(),
-    note("Any room not listed rests to save energy."),
+    // One row per room: when it heats next (and after that), in plain words.
+    card(Object.entries(p.rooms).map(([name, cells]) => {
+      const rs = runs(cells, "heat");
+      const when = rs.length ? rs.slice(0, 2).map(([a, b]) => `${at(a)}–${at(b)}`).join(" and ") : "Resting all day";
+      const now = rs.length && rs[0][0] === 0;
+      return h("div", { class: "event" }, badge(rs.length ? "flame" : "leaf", rs.length ? "hot" : "calm"),
+        h("div", { style: "flex:1" }, h("div", { class: "t" }, roomName(name)),
+          h("div", { class: "note", style: "margin:0" }, now ? `Heating now · ${when}` : rs.length ? `Warms ${when}` : when)));
+    })),
+    note("The rest of the time, rooms rest to save energy."),
     heading("Cheapest times"),
     card(h("div", { class: "event" }, badge("bolt", "calm"),
       h("span", {}, cheap.length ? `Run the washing machine or dishwasher at ${spans(cheap.slice(0, 2))}.` : "No especially cheap times today."))),
