@@ -124,3 +124,29 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | V3 | Running £ and CO₂ totals computed in the browser from kWh and the day's prices | They aren't stored twice, and scrubbing stays instant. |
 | V4 | Hand-drawn SVG with a fixed layout for the 3 toy rooms; rooms not in the layout are skipped | The simplest thing that works. When the MVP adds rooms, extend `LAYOUT`. |
 | V5 | All text set with `textContent`, never `innerHTML` | Safe even if the data file is ever replaced by something untrusted. |
+
+## Phase 2: the household app
+
+### Calendar (`heatwise/calendar.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| K1 | Read Google Calendar through the user's **secret iCal address**, not OAuth | Chosen by the team. It works in minutes with no Google Cloud project, consent screen or redirect URLs. The trade-off: the URL is a read token, so it's treated like a password. |
+| K2 | The URL lives only in `.env` (`HEATWISE_ICAL_URL`). It must be https, it never appears in errors (a test checks this), it's never returned by the API, and downloads are capped at 5 MB. | It grants read access to someone's calendar. |
+| K3 | Recurring events (RRULE) are **not expanded** yet | Keeps parsing simple today. The `recurring-ical-events` package can add it later. |
+| K4 | Times are converted to UTC | London is UTC in winter. In British Summer Time this is an hour off, so fix it with `zoneinfo` (plus `tzdata` on Windows) before real use. |
+| K5 | Keyword classifier: away (trip, flight, holiday…), WFH, guests. Anything else (gym, dentist) is shown but doesn't change the heating. | It works with no LLM. The LLM will replace it for messy titles (the next round). |
+| K6 | "Away" events pre-heat for the **last 2 hours** before they end | So you come home to a warm house. That's the welcome-home moment. |
+| K7 | The demo calendar is generated for the current week (Gym Mon, WFH Tue, a trip Thu to Fri, friends over Sat), not a fixed `.ics` file | A file with fixed dates would go stale. Generating it keeps the demo week current. |
+
+### Live home (`heatwise/live.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| L1 | Override priority: controller < calendar < away toggle < Boost < out of credit < the 12° safety floor | Manual actions beat automatic ones, and safety beats everything. |
+| L2 | The simulated people follow the calendar (nobody home during an away event; living room in use during WFH or guests) | Keeps the demo consistent: the sensors agree with the calendar. |
+| L3 | **Budget projection = spent + expected daily cost × days left. Expected daily cost starts at a prior (a typical simulated week, about £5.68 a day) and moves to observed spend over the first 24 h.** | The first version extrapolated 2 hours of evening warm-up to £112 a week and trimmed 3° straight away. The prior stops that early overreaction. |
+| L4 | Boost = comfort for 0.25 to 6 hours. Top-up £0 to £200. Manual trim 0 to 3°. Room names from a fixed list. | Validated input, so the API is safe to expose and a typo can't do anything silly. |
+| L5 | The "today's plan" timeline uses the routine heatmap only (future motion is unknown) and assumes someone's home unless the calendar says otherwise | The honest forecast of what it will do. Live motion then refines it as the day happens. |
+| L6 | Status chips and "why" sentences are templates built from the controller's reason codes. Probabilities of 95% or more read as "very likely". | Works with no LLM. The LLM can reword these later without changing the API. "100% chance" sounded wrong. |
+| L7 | The simulated week starts Monday 16:00, and a demo clock moves time forward | Shows the evening routine straight away. The pitch can fast-forward through a day. |
