@@ -76,21 +76,59 @@ def heatwise_targets(
     ``comfort`` is the per-room comfort temperature (see ``comfort_targets``);
     it defaults to ``settings.comfort`` everywhere.
     """
+    return decide(motion_recent, p_soon, people_home, score, day_scores, trim, settings, comfort)[0]
+
+
+# Reason codes returned by ``decide``. One primary reason per room, plus modifiers.
+IN_USE, EXPECTED, ECO, AWAY = "in_use", "expected", "eco", "away"
+PREHEAT, COAST, TRIM = "preheat", "coast", "trim"
+
+
+def decide(
+    motion_recent: np.ndarray,
+    p_soon: np.ndarray,
+    people_home: int,
+    score: float,
+    day_scores: np.ndarray,
+    trim: float = 0.0,
+    settings: Settings = Settings(),
+    comfort: np.ndarray | None = None,
+) -> tuple[np.ndarray, list[dict]]:
+    """Targets plus the reason for each room, so the app can explain itself.
+
+    Each reason is ``{"why": IN_USE|EXPECTED|ECO|AWAY, "mods": [PREHEAT|COAST|TRIM...],
+    "p_soon": float}``.
+    """
     s = settings
-    comfort = np.full(len(p_soon), s.comfort) if comfort is None else comfort
+    n = len(p_soon)
+    comfort = np.full(n, s.comfort) if comfort is None else comfort
     in_use = motion_recent | (p_soon >= s.use_threshold)
     base = s.eco if people_home > 0 else s.away
     targets = np.where(in_use, comfort, np.minimum(base, comfort)).astype(float)
+    reasons = [
+        {"why": IN_USE if motion_recent[i] else EXPECTED if in_use[i] else ECO if people_home > 0 else AWAY,
+         "mods": [], "p_soon": round(float(p_soon[i]), 2)}
+        for i in range(n)
+    ]
 
     good = score <= np.quantile(day_scores, s.good_quantile)
     bad = score >= np.quantile(day_scores, s.bad_quantile)
     if good:
-        targets = np.where(p_soon >= s.preheat_threshold, np.maximum(targets, s.eco) + s.preheat, targets)
+        boost = p_soon >= s.preheat_threshold
+        targets = np.where(boost, np.maximum(targets, s.eco) + s.preheat, targets)
+        for i in np.flatnonzero(boost):
+            reasons[i]["mods"].append(PREHEAT)
     elif bad:
         targets = np.where(in_use, targets - s.coast, targets)
+        for i in np.flatnonzero(in_use):
+            reasons[i]["mods"].append(COAST)
 
-    targets = targets - min(max(trim, 0.0), s.max_trim)
-    return np.maximum(targets, s.away)
+    t = min(max(trim, 0.0), s.max_trim)
+    if t > 0:
+        targets = targets - t
+        for r in reasons:
+            r["mods"].append(TRIM)
+    return np.maximum(targets, s.away), reasons
 
 
 def timer_targets(step: int, weekday: int, n_rooms: int, settings: Settings = Settings()) -> np.ndarray:
