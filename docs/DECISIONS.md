@@ -59,3 +59,26 @@ Every choice made while building Heatwise, and why. Newest at the bottom of each
 | G7 | User-Agent `heatwise-hackathon`, with no personal details | Some public APIs ask clients to identify themselves. We identify the app, not a person. |
 
 **Snapshot taken 2026-11-21:** Agile 28.1 to 53.2 p/kWh; carbon 136 to 226 g/kWh; London 2.8 to 7.7°C.
+
+## Controller (`heatwise/controller.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| C1 | Comfort 20°C, eco 17°C, away/safety 12°C | Common UK thermostat settings. The 12° floor is from the idea doc and is **never** trimmed below. |
+| C2 | Heat to comfort at P(used within the hour) ≥ 0.4 | The idea doc's threshold. |
+| C3 | Slot score = price (p/kWh) + 10p/kg × carbon | One number that ranks slots by cost and carbon. 10p/kg (£100/tonne) is close to UK carbon prices. A slider can change it later. |
+| C4 | Pre-heat +1° in the best quarter of the day's slots for rooms with P ≥ 0.2. Coast −1° in the worst quarter. | Stores heat when it's cheap and clean, and leans on it at the peak. Quartiles adapt to any day's prices. |
+| C5 | Budget trim: +1° for every 10% the projection is over budget, capped at 3° | Gradual, as the idea doc asks. The cap stops comfort falling off a cliff. |
+| C6 | The controller only sees what a house can sense (motion, phones, forecasts), not ground truth | Keeps the simulation honest about what is possible in a real house. |
+| C7 | Timer baseline: weekdays 06:30 to 08:30 and 17:00 to 22:30, weekends 08:00 to 23:00, every room, 12° otherwise | A typical UK central-heating timer. It's the "usual plan" the judges asked us to compare against. |
+
+## Payments (`heatwise/supplier.py`, `heatwise/wallet.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| W1 | Energy is bought in **fixed 10p blocks**, one paid call per block | The SolvaPay Python SDK (`solvapay` 0.1.1) records exactly one unit per paid call (`track_usage` sends `units: 1`), so a variable price per call isn't possible. Blocks also keep calls to about 10 per £1 rather than one per 15 minutes per room. The SolvaPay plan must price 1 unit at 10p. |
+| W2 | `LocalSupplier` mirrors the paywall (402 plus a checkout link), and `SolvaPaySupplier` is used when `SOLVAPAY_SECRET_KEY` is set | Everything runs and is tested with no account or keys. The real sandbox is a drop-in swap. The SolvaPay path is **not** covered by automated tests because it needs a live sandbox account. |
+| W3 | Out of credit means **emergency credit** for safety heating, logged as debt, plus a top-up request with the checkout link | Never let the house freeze because a payment failed (the safety risk in the idea doc). It mirrors how UK prepayment meters work. |
+| W4 | The budget is what the human loaded through checkout. The agent never tops up on its own. | Humans approve spending, and the agent spends within what was approved (the "who approves" judging question). |
+| W5 | Input validation: `customer_ref` limited to `[A-Za-z0-9_-]{1,64}`, top-ups to £0 to £500, API docs pages turned off | Safe to expose if the repo or demo goes public. Stops injection-style input and silly balances. |
+| W6 | Request models defined at module level | With `from __future__ import annotations`, FastAPI couldn't resolve models defined inside a function and treated the body as a query parameter (a test caught this). |
