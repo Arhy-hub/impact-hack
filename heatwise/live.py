@@ -374,6 +374,10 @@ class LiveHome:
         }
 
     def state(self) -> dict:
+        """Everything the app shows, as plain JSON-safe Python types."""
+        return _plain(self._state())
+
+    def _state(self) -> dict:
         t = min(self.t, WEEK_STEPS - 1)
         s_day = t % STEPS_PER_DAY
         hour = s_day // 4
@@ -408,3 +412,16 @@ class LiveHome:
                          "now": cal.hints(self.events, t, self.week_start)["events"]},
             "finished": self.finished,
         }
+
+
+def _plain(x):
+    """Recursively convert numpy scalars and arrays to plain Python for JSON."""
+    if isinstance(x, dict):
+        return {k: _plain(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_plain(v) for v in x]
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    if isinstance(x, np.generic):
+        return x.item()
+    return x
