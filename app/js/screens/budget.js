@@ -1,7 +1,7 @@
 // Budget: am I on track this week? Primary action: Add money.
 import { api, store } from "../api.js";
-import { co2Like, gbp } from "../format.js";
-import { badge, barChart, button, card, empty, ghosts, h, heading, line, note, ring, sheet, stepper } from "../ui.js";
+import { gbp } from "../format.js";
+import { barChart, button, card, empty, ghosts, h, heading, line, note, ring, sheet, stepper } from "../ui.js";
 
 export const title = "Budget";
 
@@ -57,9 +57,6 @@ export function render({ state, loading, error }) {
         stepper(b.manual_trim, { min: 0, max: 3, onChange: v => api.trim(v), label: "turn every room down", format: v => `${v}°` })),
       note(b.auto_trim ? `Heatwise is already turning rooms down ${b.auto_trim}° to keep you on budget.`
         : "Each degree saves roughly 10% on heating.")),
-    heading("Your impact"),
-    card(h("div", { class: "event" }, badge("leaf", "calm"),
-      h("div", {}, h("div", { class: "t" }, `${b.co2_kg.toFixed(1)} kg CO₂ this week`), h("div", { class: "note", style: "margin:0" }, co2Like(b.co2_kg))))),
     card(line("Paid with", b.supplier === "solvapay" ? "SolvaPay" : "SolvaPay (demo)")),
   ];
 }
