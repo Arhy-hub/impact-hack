@@ -1,71 +1,70 @@
-// Settings: connect the calendar and set comfort. A plain form that saves as you go.
+// Settings: look, calendar, comfort, and the demo clock.
 import { api, store } from "../api.js";
 import * as theme from "../theme.js";
-import { action, h, haptic, largeTitle, placeholderSection, row, section, segmented, stepper, unavailable } from "../ui.js";
+import { button, card, empty, ghosts, h, haptic, heading, line, note, pill, seg, stepper } from "../ui.js";
 
 export const title = "Settings";
-let calendarMessage = null;  // inline result of the last connect attempt
+let calendarMessage = null;
 let playing = null;
 
-function calendarSection(state) {
-  const connected = state.calendar.source === "google";
-  if (connected) {
-    return section({ header: "Calendar", footer: `Reading ${state.calendar.events_this_week} events. Heatwise only reads your calendar.` },
-      row({ title: "Google Calendar", value: "Connected" }),
-      action("Disconnect", async () => { calendarMessage = null; await api.calendar(""); }, { destructive: true }));
+function stopPlaying() { if (playing) { clearInterval(playing); playing = null; } }
+
+function calendarCard(state) {
+  if (state.calendar.source === "google") {
+    return card(
+      h("div", { class: "line" }, h("span", {}, "Google Calendar"), pill(null, "Connected", "calm")),
+      note(`Reading ${state.calendar.events_this_week} events. Heatwise can only read your calendar, never change it.`),
+      h("div", { style: "margin-top:12px" }, button("Disconnect", async () => { calendarMessage = null; await api.calendar(""); }, "danger")));
   }
   const input = h("input", { class: "field", type: "password", autocomplete: "off", spellcheck: "false",
-    placeholder: "Secret address in iCal format", "aria-label": "Secret address in iCal format" });
+    placeholder: "Paste your calendar's secret address", "aria-label": "Calendar secret address in iCal format" });
   const connect = async () => {
     const url = input.value.trim();
-    if (!url) { calendarMessage = "Paste your calendar's secret address first."; return api.load(); }
+    if (!url) { calendarMessage = "Paste the secret address first."; return api.load(); }
     const res = await api.calendar(url);
     calendarMessage = res.ok ? null : res.message;
     if (res.ok) haptic();
   };
   input.addEventListener("keydown", e => { if (e.key === "Enter") connect(); });
-  return section({
-    header: "Calendar",
-    footer: calendarMessage || "In Google Calendar, open Settings, choose your calendar, then copy “Secret address in iCal format”. Treat it like a password.",
-    footerWarning: Boolean(calendarMessage),
-  },
-    row({ title: "Google Calendar", value: "Not connected" }),
-    h("div", { class: "row" }, input),
-    action("Connect", connect));
-}
-
-function demoSection(state) {
-  const toggle = () => {
-    if (playing) { clearInterval(playing); playing = null; return api.load(); }
-    playing = setInterval(async () => {
-      const r = await api.tick(2);
-      if (!r.ok || store.state?.finished) { clearInterval(playing); playing = null; }
-    }, 700);
-    api.load();
-  };
-  return section({ header: "Demo", footer: "The home and its people are simulated. Electricity prices, grid carbon and weather are real." },
-    row({ title: "Simulated time", value: state.finished ? `${state.clock} · end of week` : state.clock }),
-    action("Advance 1 hour", () => api.tick(4), { disabled: state.finished }),
-    action(playing ? "Pause" : "Play", toggle, { disabled: state.finished && !playing }),
-    action("Restart week", () => { if (playing) { clearInterval(playing); playing = null; } api.reset(); }));
+  return card(
+    h("div", { class: "line" }, h("span", {}, "Google Calendar"), pill(null, "Not connected")),
+    h("p", { class: "note", style: "margin:4px 0 12px" },
+      "Heatwise warms the house before you get home and rests it while you're away. In Google Calendar, open Settings, pick your calendar and copy the “Secret address in iCal format”."),
+    input,
+    calendarMessage ? note(calendarMessage, true) : null,
+    h("div", { style: "margin-top:12px" }, button("Connect calendar", connect, "wide")));
 }
 
 export function render({ state, loading, error }) {
-  if (loading && !state) return [largeTitle(title), placeholderSection(2), placeholderSection(1), placeholderSection(3)];
-  if (error && !state) return unavailable({ iconName: "offline", title: "Can't load settings",
-    message: "Check that the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
-  const c = state.comfort_c;
-  const appearance = theme.saved();
+  if (loading && !state) return ghosts(4);
+  if (error && !state) return empty({ iconName: "offline", title: "Can't load settings",
+    message: "Check the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
+  const toggle = () => {
+    if (playing) { stopPlaying(); return api.load(); }
+    playing = setInterval(async () => {
+      const r = await api.tick(2);
+      if (!r.ok || store.state?.finished) stopPlaying();
+    }, 700);
+    api.load();
+  };
   return [
-    largeTitle(title),
-    section({ header: "Appearance", footer: appearance === "system" ? "Follows your device's light or dark setting." : null },
-      h("div", { class: "row" }, segmented(theme.CHOICES, appearance, choice => { theme.set(choice); api.load(); }, "Appearance"))),
-    calendarSection(state),
-    section({ header: "Comfort", footer: "Used for rooms that are in use. Bedrooms stay at 17°C overnight." },
-      row({ title: "Daytime", value: `${c}°C`,
-        trailing: stepper(c, { min: 16, max: 23, step: 0.5, onChange: v => api.comfort(v), label: "daytime temperature" }) })),
-    section({ header: "Budget", footer: "Add credit from the Budget tab." },
-      row({ title: "This week", value: `£${state.budget.budget_gbp.toFixed(2)}` })),
-    demoSection(state),
+    h("div", { class: "top" }, h("h1", { class: "hello" }, "Settings")),
+    heading("Look"),
+    card(seg(theme.CHOICES, theme.saved(), choice => { theme.set(choice); api.load(); }, "Light or dark")),
+    heading("Calendar"),
+    calendarCard(state),
+    heading("Comfort"),
+    card(
+      h("div", { class: "line" }, h("span", {}, "Comfy temperature"),
+        stepper(state.comfort_c, { min: 16, max: 23, step: 0.5, onChange: v => api.comfort(v), label: "comfy temperature", format: v => `${v}°` })),
+      note("Used in rooms you're in. Bedrooms cool to 17° overnight for better sleep.")),
+    heading("Demo"),
+    card(
+      line("Pretend time", state.finished ? `${state.clock} (end of week)` : state.clock),
+      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" },
+        button("+1 hour", () => api.tick(4), "soft", { disabled: state.finished || null }),
+        button(playing ? "Pause" : "Play", toggle, "soft", { disabled: (state.finished && !playing) || null }),
+        button("Start again", () => { stopPlaying(); api.reset(); }, "quiet")),
+      note("The home and its people are simulated. Prices, grid carbon and weather are real.")),
   ];
 }

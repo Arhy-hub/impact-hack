@@ -11,7 +11,7 @@ import * as settings from "./screens/settings.js";
 const TABS = [
   { id: "home", label: "Home", icon: "home", screen: home },
   { id: "budget", label: "Budget", icon: "budget", screen: budget },
-  { id: "schedule", label: "Schedule", icon: "schedule", screen: schedule },
+  { id: "schedule", label: "Plan", icon: "schedule", screen: schedule },
   { id: "settings", label: "Settings", icon: "settings", screen: settings },
 ];
 const PUSHED = { room };
@@ -45,17 +45,16 @@ function draw(pushed = false) {
   const tab = TABS.find(t => t.id === nav.tab);
   const top = stack()[stack().length - 1];
   const content = top ? PUSHED[top.screen].render(store, nav, top.arg) : tab.screen.render(store, nav);
-  const navBar = top
-    ? h("div", { class: "nav" }, h("button", { class: "back", onclick: nav.back, "aria-label": `Back to ${tab.label}` },
-        icon("chevronLeft", 22), tab.label))
-    : h("div", { class: "nav plain" });
-  const page = h("main", { class: pushed ? "push" : "" }, navBar, content);
+  const backBtn = top
+    ? h("button", { class: "back", onclick: nav.back, "aria-label": `Back to ${tab.label}` }, icon("back", 20), tab.label)
+    : null;
+  const page = h("main", { class: pushed ? "enter" : "" }, backBtn, content);
   view.replaceChildren(page);
   document.title = `${tab.label} · Heatwise`;
 
   bar.replaceChildren(...TABS.map(t => h("button", {
     class: "tab", "aria-current": t.id === nav.tab ? "page" : null, onclick: () => selectTab(t.id),
-  }, icon(t.icon, 26), t.label)));
+  }, icon(t.icon, 24), t.label)));
 }
 
 // Preview deep links for screenshots and review: ?tab=budget, ?room=living

@@ -18,7 +18,7 @@ export function apply(choice) {
   if (choice === "light" || choice === "dark") root.dataset.theme = choice;
   else delete root.dataset.theme;
   const dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute("content", dark ? "#000000" : "#f2f2f7");
+  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute("content", dark ? "#15110f" : "#fbf6f1");
 }
 
 export function set(choice) {

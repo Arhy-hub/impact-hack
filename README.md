@@ -63,7 +63,7 @@ More in [docs/screenshots](docs/screenshots) (dark mode, Schedule, Settings). Re
 
 ## Using the app
 
-The household app is a phone-first web app that follows Apple's Human Interface Guidelines (system font and text styles, inset grouped lists, a tab bar, one accent colour, light and dark mode, large-text support):
+The household app is a phone-first web app in a warm, friendly style: plain-English labels, visuals you can read at a glance (temperature bars, a budget ring, 24-hour heating strips), light and dark mode, and large-text support:
 
 ```bash
 uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
@@ -74,7 +74,7 @@ Four tabs:
 
 - **Home:** the Away switch (every room to 12°C), each room's temperature and status, and the price, outside temperature and grid carbon right now. Tap a room to see its target, **why** it's at that target, and a chart of the next 24 hours.
 - **Budget:** spent this week against your budget, the projection, credit left and CO₂. **Top up** (£5, £10 or £20 through SolvaPay) and a comfort trim stepper.
-- **Schedule:** which rooms heat when over the next 24 hours, the cheapest hours, and calendar events with what each one does to the heating.
+- **Plan:** which rooms heat when over the next 24 hours, the cheapest hours, and calendar events with what each one does to the heating.
 - **Settings:** Appearance (System, Light or Dark), connect Google Calendar (secret iCal link), the daytime comfort temperature, and a **Demo** section to move the simulated week along (the home starts on Monday at 16:00).
 
 Design review helpers: add `?theme=dark`, `?theme=light` or `?text=xl` (largest text size) to the URL.

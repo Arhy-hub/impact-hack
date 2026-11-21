@@ -1,43 +1,52 @@
-// Home: see each room's temperature and whether it's heating.
-// Primary action: the Away switch.
+// Home: how warm is my home, and what is it doing? Primary action: Away.
 import { api } from "../api.js";
-import { priceWord, roomName, roomStatus, temp } from "../format.js";
-import { hero, largeTitle, placeholderSection, row, section, toggle, unavailable } from "../ui.js";
+import { PRICE, deg, greeting, roomMood, roomName, time12 } from "../format.js";
+import { badge, card, empty, ghosts, h, heading, icon, meter, pill, toggle } from "../ui.js";
 
 export const title = "Home";
 
+function sentence(s) {
+  if (s.away) return "Away mode is on. Every room is resting at 12° to save energy.";
+  const heating = s.rooms.filter(r => r.heating).map(r => roomName(r.name).toLowerCase());
+  const what = heating.length ? `Warming the ${heating.join(" and ")}.` : "Nothing needs heating right now.";
+  const why = { peak: " Electricity is pricey, so we're keeping things gentle.",
+    cheap: " Electricity is cheap, so we're storing a little extra warmth.", normal: "" }[s.price_level];
+  return what + why;
+}
+
 export function render({ state, loading, error }, nav) {
-  if (loading && !state) {
-    return [largeTitle(title), placeholderSection(1, false), placeholderSection(3), placeholderSection(3)];
-  }
-  if (error && !state) {
-    return unavailable({ iconName: "offline", title: "Can't reach your heating",
-      message: "Check that the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
-  }
+  if (loading && !state) return ghosts(4);
+  if (error && !state) return empty({ iconName: "offline", title: "Can't reach your heating",
+    message: "Check the Heatwise server is running, then try again.", actionLabel: "Try again", onAction: api.load });
   const s = state;
-  if (!s.rooms.length) {
-    return [largeTitle(title), unavailable({ iconName: "home", title: "No rooms yet",
-      message: "Rooms appear here once their sensors are connected." })];
-  }
+  if (!s.rooms.length) return empty({ iconName: "home", title: "No rooms yet", message: "Rooms show up here once their sensors are connected." });
+
   const avg = s.rooms.reduce((sum, r) => sum + r.temp, 0) / s.rooms.length;
-  const heating = s.rooms.filter(r => r.heating).length;
-  const summary = s.away ? "Away mode is on"
-    : heating ? `Heating ${heating} of ${s.rooms.length} rooms` : "Not heating right now";
+  const price = PRICE[s.price_level];
+  const clean = s.carbon_g < 180;
   return [
-    largeTitle(title),
-    hero({ eyebrow: "Inside, on average", reading: temp(avg), label: `Inside ${temp(avg)}. ${summary}.`,
-      detail: `${summary} · ${s.outside_c.toFixed(0)}°C outside` }),
-    section({ footer: s.away ? "Every room is held at 12°C until you turn this off." : "Turn on when everyone leaves. Rooms drop to 12°C." },
-      row({ title: "Away", trailing: toggle(s.away, on => api.away(on), "Away") })),
-    section({ header: "Rooms" },
-      s.rooms.map(r => row({
-        title: roomName(r.name), sub: roomStatus(r), subActive: r.heating, value: temp(r.temp), strong: true, chevron: true,
-        label: `${roomName(r.name)}, ${temp(r.temp)}, ${roomStatus(r)}`,
-        onClick: () => nav.push("room", r.name),
-      }))),
-    section({ header: "Right now", footer: s.tips[0] || null },
-      row({ title: "Electricity", value: `${s.price_p.toFixed(0)}p/kWh · ${priceWord[s.price_level]}` }),
-      row({ title: "Outside", value: `${s.outside_c.toFixed(1)}°C` }),
-      row({ title: "Grid carbon", value: `${s.carbon_g} g/kWh` })),
+    h("div", { class: "top" },
+      h("div", {}, h("h1", { class: "hello" }, greeting(s.clock)), h("div", { class: "date" }, `${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
+      toggle(s.away, on => api.away(on), "Away")),
+    h("section", { class: "hero", "aria-label": `Inside ${deg(avg)}. ${sentence(s)}` },
+      h("div", { class: "label" }, "Inside right now"),
+      h("div", { class: "big" }, deg(avg)),
+      h("div", { class: "say" }, sentence(s))),
+    h("div", { class: "pills" },
+      pill("bolt", `${price.text} · ${s.price_p.toFixed(0)}p`, price.tone),
+      pill("thermo", `${s.outside_c.toFixed(0)}° outside`),
+      pill("leaf", clean ? "Clean energy now" : "Busy grid now", clean ? "calm" : "")),
+    heading("Your rooms"),
+    s.rooms.map(r => {
+      const mood = roomMood(r);
+      return h("button", { class: "card tap", onclick: () => nav.push("room", r.name),
+        "aria-label": `${roomName(r.name)}, ${deg(r.temp)}, ${mood.text}. Open details` },
+        h("div", { class: "room-head" },
+          h("div", {}, h("div", { class: "room-name" }, roomName(r.name)),
+            h("div", { class: "status " + mood.tone }, icon(mood.icon, 16), mood.text)),
+          h("div", { class: "room-temp" }, deg(r.temp))),
+        meter(r.temp, r.target, { heating: r.heating }));
+    }),
+    s.tips[0] ? [heading("Tip"), card(h("div", { class: "event" }, badge("bulb", "calm"), h("span", {}, s.tips[0])))] : null,
   ];
 }
