@@ -51,6 +51,16 @@ python -m heatwise.signals     # fetch today's live signals and save them as the
 pytest                         # all tests (offline, no keys needed)
 ```
 
+## Screenshots
+
+<p>
+<img src="docs/screenshots/home-light.png" width="240" alt="Home: average inside temperature, Away switch, rooms and current prices">
+<img src="docs/screenshots/room-light.png" width="240" alt="Living room: temperature, why it is at that target, and the next 24 hours">
+<img src="docs/screenshots/budget-light.png" width="240" alt="Budget: spent this week, projection, credit, top up and comfort trim">
+</p>
+
+More in [docs/screenshots](docs/screenshots) (dark mode, Schedule, Settings). Regenerate with `python tools/screenshots.py` while the app is running.
+
 ## Using the app
 
 The household app is a phone-first web app that follows Apple's Human Interface Guidelines (system font and text styles, inset grouped lists, a tab bar, one accent colour, light and dark mode, large-text support):

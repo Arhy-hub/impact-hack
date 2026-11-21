@@ -1,6 +1,6 @@
 // Room: understand why this room is at its target. Read-only, no primary action.
 import { roomName, temp } from "../format.js";
-import { h, largeTitle, row, section, unavailable } from "../ui.js";
+import { h, hero, largeTitle, section, unavailable } from "../ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svg = (tag, attrs, text) => {
@@ -12,7 +12,7 @@ const svg = (tag, attrs, text) => {
 
 // Bar chart of the planned target for each of the next 24 hours.
 function planChart(hours, targets, kinds) {
-  const W = 320, H = 120, top = 8, bottom = 20, lo = 12, hi = 22;
+  const W = 320, H = 126, top = 16, bottom = 20, lo = 12, hi = 22;
   const bw = W / targets.length;
   const y = t => top + (H - top - bottom) * (1 - (Math.min(hi, Math.max(lo, t)) - lo) / (hi - lo));
   const chart = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
@@ -35,10 +35,8 @@ export function render({ state }, nav, roomId) {
   const p = state.plan;
   return [
     largeTitle(roomName(r.name)),
-    section({},
-      row({ title: "Current", value: temp(r.temp), strong: true }),
-      row({ title: "Target", value: temp(r.target) }),
-      row({ title: "Status", value: r.heating ? "Heating" : r.status })),
+    hero({ eyebrow: r.heating ? "Heating" : r.status, reading: temp(r.temp), label: `${roomName(r.name)} ${temp(r.temp)}, target ${temp(r.target)}`,
+      detail: `Target ${temp(r.target)}` }),
     section({ header: "Why" }, h("div", { class: "text-cell" }, r.why)),
     section({ header: "Next 24 hours", footer: "Orange hours are when it heats, based on your usual routine and today's electricity prices." },
       planChart(p.hours, p.targets[r.name], p.rooms[r.name])),

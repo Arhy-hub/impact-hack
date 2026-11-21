@@ -56,6 +56,10 @@ function draw(pushed = false) {
   }, icon(t.icon, 26), t.label)));
 }
 
+// Preview deep links for screenshots and review: ?tab=budget, ?room=living
+if (TABS.some(t => t.id === params.get("tab"))) nav.tab = params.get("tab");
+if (params.get("room")) nav.stacks[nav.tab].push({ screen: "room", arg: params.get("room") });
+
 subscribe(() => { const y = window.scrollY; draw(); window.scrollTo(0, y); });
 draw();
 api.load();

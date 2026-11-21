@@ -115,6 +115,13 @@ export function placeholderSection(rows = 3, header = true) {
       h("div", { class: "row" }, h("div", { class: "row-main" }, bar(`${110 + (i % 2) * 40}px`)), bar("44px")))));
 }
 
+// The coloured summary panel (one per screen at most).
+export function hero({ eyebrow, reading, detail, label }) {
+  return h("section", { class: "hero", role: "group", "aria-label": label },
+    h("div", { class: "eyebrow" }, eyebrow), h("div", { class: "reading" }, reading),
+    detail ? h("div", { class: "detail" }, detail) : null);
+}
+
 export function largeTitle(text) {
   return h("h1", { class: "large-title" }, text);
 }

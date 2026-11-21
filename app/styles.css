@@ -91,7 +91,16 @@ button.row:active { background: var(--pressed); }
 .figure .value { font: 700 2.125rem/1.1 var(--font); font-variant-numeric: tabular-nums; }
 .figure .caption { font: var(--subhead); color: var(--secondary); margin-top: 4px; }
 .progress { height: 6px; border-radius: 3px; background: var(--fill); margin-top: 12px; overflow: hidden; }
-.progress > span { display: block; height: 100%; background: var(--tint); border-radius: 3px; }
+.progress > span { display: block; height: 100%; border-radius: 3px;
+                   background: linear-gradient(90deg, var(--tint), #ff3b1f); }
+
+/* Summary panel: the app's one splash of colour. Black into orange-red, like a Wallet card.
+   Always dark with white text, so it reads the same in light and dark mode. */
+.hero { margin: 0 16px 32px; padding: 20px 20px 18px; border-radius: 16px; color: #fff;
+        background: linear-gradient(135deg, #0b0b0c 0%, #1d0c06 38%, #8a2408 72%, #ff4a1c 100%); }
+.hero .eyebrow { font: var(--footnote); color: rgba(255, 255, 255, 0.72); }
+.hero .reading { font: 300 3.5rem/1.05 var(--font); letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.hero .detail { font: var(--subhead); color: rgba(255, 255, 255, 0.85); margin-top: 6px; }
 
 /* Controls */
 .switch { position: relative; width: 51px; height: 31px; flex: none; }

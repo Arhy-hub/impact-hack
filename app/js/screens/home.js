@@ -2,7 +2,7 @@
 // Primary action: the Away switch.
 import { api } from "../api.js";
 import { priceWord, roomName, roomStatus, temp } from "../format.js";
-import { h, largeTitle, placeholderSection, row, section, toggle, unavailable } from "../ui.js";
+import { hero, largeTitle, placeholderSection, row, section, toggle, unavailable } from "../ui.js";
 
 export const title = "Home";
 
@@ -19,8 +19,14 @@ export function render({ state, loading, error }, nav) {
     return [largeTitle(title), unavailable({ iconName: "home", title: "No rooms yet",
       message: "Rooms appear here once their sensors are connected." })];
   }
+  const avg = s.rooms.reduce((sum, r) => sum + r.temp, 0) / s.rooms.length;
+  const heating = s.rooms.filter(r => r.heating).length;
+  const summary = s.away ? "Away mode is on"
+    : heating ? `Heating ${heating} of ${s.rooms.length} rooms` : "Not heating right now";
   return [
     largeTitle(title),
+    hero({ eyebrow: "Inside, on average", reading: temp(avg), label: `Inside ${temp(avg)}. ${summary}.`,
+      detail: `${summary} · ${s.outside_c.toFixed(0)}°C outside` }),
     section({ footer: s.away ? "Every room is held at 12°C until you turn this off." : "Turn on when everyone leaves. Rooms drop to 12°C." },
       row({ title: "Away", trailing: toggle(s.away, on => api.away(on), "Away") })),
     section({ header: "Rooms" },
