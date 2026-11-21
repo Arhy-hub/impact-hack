@@ -2,6 +2,7 @@
 // The mock calendar, a big Play button, jump to any day, and Luke's running commentary.
 import { api, store } from "../api.js";
 import { time12 } from "../format.js";
+import { houseView } from "../house.js";
 import { button, card, empty, ghosts, h, heading, icon, note, seg } from "../ui.js";
 
 export const title = "Demo";
@@ -58,6 +59,8 @@ export function render({ state, loading, error }) {
         String(speed), v => { speed = Number(v); api.load(); }, "Speed")),
       h("div", { class: "small muted", style: "margin:12px 0 6px" }, "Jump to"),
       h("div", { class: "days" }, DAYS.map((d, i) => button(d, () => { stop(); api.jump(i, 7); }, "quiet")))),
+    heading("The house right now"),
+    card(houseView(state)),
     heading("Luke's notes"),
     card(state.log.length
       ? h("div", { class: "feed" }, [...state.log].reverse().slice(0, 12).map(l => h("div", { class: `item ${l.kind}` },

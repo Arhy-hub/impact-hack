@@ -636,6 +636,7 @@ class LiveHome:
                 "warmup_min": None if not np.isfinite(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i])
                               else int(round(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i] * 60)),
                 "custom": i in self.room_comfort,
+                "occupied": bool(self.occ.occupied[t, i]),  # simulated ground truth, for the house drawing
                 "status": chip,
                 "why": why,
             })

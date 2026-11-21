@@ -206,3 +206,35 @@ button, input { font: inherit; color: inherit; }
 .days { display: flex; gap: 6px; flex-wrap: wrap; }
 .days button { flex: 1; min-width: 40px; min-height: 40px; border: 0; border-radius: 10px; background: var(--track); font-weight: 700; cursor: pointer; }
 .days button.on { background: var(--accent); color: #fff; }
+
+/* Clock bar: the current (simulated) time, on every screen */
+.clockbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; margin: -16px -16px 8px;
+            padding: calc(10px + env(safe-area-inset-top)) 20px 10px; background: var(--bg); font-size: .875rem;
+            border-bottom: 1px solid var(--line); }
+.clockbar:empty { display: none; }
+.clockbar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.clockbar .dot.live { background: var(--calm); }
+
+/* House drawing (Demo tab) */
+.house { position: relative; }
+.house svg { width: 100%; height: auto; display: block; }
+.house .room-box { stroke: var(--ink); stroke-width: 2; fill: var(--card); transition: fill .4s; }
+.house .room-box.heating { fill: var(--accent-soft); }
+.house .room-label { fill: var(--ink); font: 700 13px var(--head); }
+.house .room-temp { fill: var(--ink); font: 600 20px var(--head); }
+.house .room-note { fill: var(--muted); font: 600 11px var(--text); }
+.house .roof { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+.house .flame { fill: var(--accent); }
+.house .person { fill: var(--ink); }
+
+/* Presenting on a laptop: simulation panel beside the phone app */
+.sim { display: none; }
+@media (min-width: 900px) {
+  .stage { display: grid; grid-template-columns: 520px 420px; justify-content: center; gap: 32px; align-items: start; }
+  .sim { order: 2; display: block; position: sticky; top: 0; height: 100vh; overflow: auto; padding: 16px 0 24px; }
+  .sim .top { display: none; }
+  .sim-title { font: 700 .8125rem/1 var(--text); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 12px 4px; }
+  .stage .app { margin: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+  .stage .app { width: 520px; }
+  .tabbar { left: calc(50% - 486px); right: auto; width: 520px; }
+}

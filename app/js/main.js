@@ -1,6 +1,7 @@
 // App shell: tab bar (TabView), a navigation stack per tab, and rendering from the store.
 import { api, store, subscribe } from "./api.js";
 import { h, icon } from "./ui.js";
+import { time12 } from "./format.js";
 import * as theme from "./theme.js";
 import * as home from "./screens/home.js";
 import * as room from "./screens/room.js";
@@ -36,6 +37,9 @@ nav.push = (screen, arg) => { scroll[key()] = window.scrollY; stack().push({ scr
 nav.back = () => { stack().pop(); draw(); window.scrollTo(0, scroll[key()] || 0); };
 const key = () => nav.tab + stack().map(s => `/${s.screen}:${s.arg}`).join("");
 
+const wide = () => matchMedia("(min-width: 900px)").matches;
+matchMedia("(min-width: 900px)").addEventListener("change", () => { if (wide() && nav.tab === "demo") nav.tab = "home"; draw(); });
+
 function selectTab(id) {
   if (id === nav.tab && stack().length) nav.stacks[id] = [];  // tapping the current tab pops to root, like iOS
   scroll[key()] = window.scrollY;
@@ -52,10 +56,24 @@ function draw(pushed = false) {
     ? h("button", { class: "back", onclick: nav.back, "aria-label": `Back to ${tab.label}` }, icon("back", 20), tab.label)
     : null;
   const page = h("main", { class: pushed ? "enter" : "" }, backBtn, content);
+  const st = store.state;
+  document.getElementById("clockbar").replaceChildren(...(st ? [
+    h("span", { class: "dot" + (st.mode === "realtime" ? " live" : "") }),
+    h("b", {}, `${st.clock.slice(0, 3)} ${time12(st.clock.slice(4))}`),
+    h("span", { class: "muted" }, st.mode === "realtime" ? "Live" : "Example week"),
+    h("span", { class: "muted", style: "margin-left:auto" }, `${st.outside_c.toFixed(0)}° outside · ${st.price_p.toFixed(0)}p`),
+  ] : []));
   view.replaceChildren(page);
   document.title = `${tab.label} · Heatwise`;
 
-  bar.replaceChildren(...TABS.map(t => h("button", {
+  // Wide screens (laptop, projector): the simulation sits beside the app, and the Demo tab is not needed.
+  const sim = document.getElementById("sim");
+  if (wide()) {
+    const y = sim.scrollTop;
+    sim.replaceChildren(h("div", { class: "sim-title" }, "Simulation"), ...[demo.render(store, nav)].flat(Infinity).filter(Boolean));
+    sim.scrollTop = y;
+  } else sim.replaceChildren();
+  bar.replaceChildren(...TABS.filter(t => !(wide() && t.id === "demo")).map(t => h("button", {
     class: "tab", "aria-current": t.id === nav.tab ? "page" : null, onclick: () => selectTab(t.id),
   }, icon(t.icon, 24), t.label)));
 }
