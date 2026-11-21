@@ -14,7 +14,8 @@ Endpoints:
 
 * ``GET  /api/home``: everything the home screen shows
 * ``POST /api/tick {"steps": n}``: move the demo clock forward n × 15 min
-* ``POST /api/boost {"room": "...", "hours": 1}`` and ``POST /api/boost/cancel {"room": "..."}``
+* ``POST /api/comfort {"temp": 20}``: daytime comfort temperature
+* ``POST /api/calendar {"url": "https://..."}``: connect a secret iCal link ("" for the demo week)
 * ``POST /api/away {"on": true}``
 * ``POST /api/trim {"degrees": 1}``
 * ``POST /api/topup {"pounds": 10}``
@@ -29,9 +30,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .live import MAX_BOOST_H, MAX_TOPUP_GBP, LiveHome
+from .live import COMFORT_RANGE, MAX_TOPUP_GBP, LiveHome
 
 try:  # optional: read .env so keys and the calendar URL can live there
     from dotenv import load_dotenv
@@ -40,21 +42,20 @@ try:  # optional: read .env so keys and the calendar URL can live there
 except ImportError:  # pragma: no cover
     pass
 
-PAGE = Path(__file__).resolve().parent.parent / "app" / "index.html"
-ROOM_PATTERN = r"^[a-z_]{1,32}$"
+APP_DIR = Path(__file__).resolve().parent.parent / "app"
+PAGE = APP_DIR / "index.html"
 
 
 class Tick(BaseModel):
     steps: int = Field(1, ge=1, le=96)
 
 
-class Boost(BaseModel):
-    room: str = Field(pattern=ROOM_PATTERN)
-    hours: float = Field(1.0, ge=0.25, le=MAX_BOOST_H)
+class Comfort(BaseModel):
+    temp: float = Field(ge=COMFORT_RANGE[0], le=COMFORT_RANGE[1])
 
 
-class Room(BaseModel):
-    room: str = Field(pattern=ROOM_PATTERN)
+class CalendarLink(BaseModel):
+    url: str = Field("", max_length=2048)
 
 
 class Away(BaseModel):
@@ -94,6 +95,8 @@ def create_app(home_factory=default_home) -> FastAPI:
             state["result"] = extra
         return state
 
+    app.mount("/assets", StaticFiles(directory=APP_DIR), name="assets")
+
     @app.get("/", include_in_schema=False)
     def page():
         return FileResponse(PAGE, media_type="text/html")
@@ -106,13 +109,18 @@ def create_app(home_factory=default_home) -> FastAPI:
     def tick(body: Tick):
         return act(lambda h: h.tick(body.steps))
 
-    @app.post("/api/boost")
-    def boost(body: Boost):
-        return act(lambda h: h.boost(body.room, body.hours))
+    @app.post("/api/comfort")
+    def comfort(body: Comfort):
+        return act(lambda h: h.set_comfort(body.temp))
 
-    @app.post("/api/boost/cancel")
-    def cancel(body: Room):
-        return act(lambda h: h.cancel_boost(body.room))
+    @app.post("/api/calendar")
+    def calendar(body: CalendarLink):
+        def connect(h):
+            try:
+                h.set_calendar(body.url)
+            except RuntimeError as err:  # network/parse failure: generic message, no URL
+                raise ValueError(str(err)) from None
+        return act(connect)
 
     @app.post("/api/away")
     def away(body: Away):

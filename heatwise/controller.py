@@ -114,9 +114,9 @@ def decide(
     good = score <= np.quantile(day_scores, s.good_quantile)
     bad = score >= np.quantile(day_scores, s.bad_quantile)
     if good:
-        boost = p_soon >= s.preheat_threshold
-        targets = np.where(boost, np.maximum(targets, s.eco) + s.preheat, targets)
-        for i in np.flatnonzero(boost):
+        store = p_soon >= s.preheat_threshold
+        targets = np.where(store, np.maximum(targets, s.eco) + s.preheat, targets)
+        for i in np.flatnonzero(store):
             reasons[i]["mods"].append(PREHEAT)
     elif bad:
         targets = np.where(in_use, targets - s.coast, targets)

@@ -30,19 +30,28 @@ def test_tick_advances_and_spends(home):
     assert s["budget"]["spent_gbp"] > 0
 
 
-def test_boost_sets_comfort_then_expires(home):
-    home.boost("bedroom", 1)
-    r = home.state()["rooms"][0]
-    assert r["target"] == 20.0 and r["status"] == "Boost" and r["boost_until"] == "Mon 17:00"
-    home.tick(4)
-    assert home.state()["rooms"][0]["status"] != "Boost"
+def test_comfort_setting(home):
+    home.tick(96 + 48 - home.t)  # Tue 12:00: living room in use (WFH)
+    home.set_comfort(21)
+    assert home.state()["comfort_c"] == 21
+    assert home.state()["rooms"][2]["target"] >= 20.0
+    for bad in (10, 30):
+        with pytest.raises(ValueError):
+            home.set_comfort(bad)
 
 
-def test_boost_validation(home):
+def test_calendar_switch_back_to_demo_and_bad_link(home):
+    home.set_calendar("")
+    assert home.state()["calendar"]["source"] == "demo"
     with pytest.raises(ValueError):
-        home.boost("garage", 1)
-    with pytest.raises(ValueError):
-        home.boost("bedroom", 10)
+        home.set_calendar("http://insecure.example/cal.ics")
+    assert home.state()["calendar"]["source"] == "demo"  # unchanged on failure
+
+
+def test_plan_has_numeric_targets(home):
+    plan = home.state()["plan"]
+    assert len(plan["targets"]["living"]) == 24
+    assert all(12.0 <= t <= 23.0 for t in plan["targets"]["living"])
 
 
 def test_away_mode_drops_to_safety_floor_and_back(home):

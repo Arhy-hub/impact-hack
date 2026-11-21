@@ -5,7 +5,7 @@ step):
 
 1. ``decide`` the targets: controller (ML occupancy, price and carbon, budget
    trim), then overrides in priority order: calendar, then the away toggle,
-   then Boost. Running out of credit beats everything except the safety floor.
+   then the away toggle. Running out of credit beats everything except the safety floor.
 2. ``House.step`` the physics, then ``Wallet.pay`` for the electricity.
 
 The household is simulated (people, sensors, house). Prices, carbon and
@@ -21,6 +21,7 @@ these later without changing the API.
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
@@ -39,13 +40,13 @@ from .wallet import Wallet
 
 CUSTOMER = "demo-house"
 WEEK_STEPS = 7 * STEPS_PER_DAY
-MAX_BOOST_H = 6.0
+COMFORT_RANGE = (16.0, 23.0)
 MAX_TOPUP_GBP = 200.0
 DISPLAY = {"living": "living room"}  # how rooms are named in sentences
 
 # Extra reason codes for overrides, on top of the controller's own.
 CAL_AWAY, CAL_RETURN, CAL_WFH, CAL_GUESTS = "cal_away", "cal_return", "cal_wfh", "cal_guests"
-MANUAL_AWAY, BOOST, NO_CREDIT = "manual_away", "boost", "no_credit"
+MANUAL_AWAY, NO_CREDIT = "manual_away", "no_credit"
 
 
 def this_monday(today: date | None = None) -> date:
@@ -86,6 +87,7 @@ class LiveHome:
         settings: Settings = Settings(),
     ):
         self.settings = settings
+        self.seed = seed
         self.rooms = DEFAULT_ROOMS
         self.names = [r.name for r in self.rooms]
         self.week_start = week_start or this_monday()
@@ -126,7 +128,6 @@ class LiveHome:
 
         self.t = start_step
         self.start_step = start_step
-        self.boost_until: dict[int, int] = {}
         self.away_manual = False
         self.manual_trim = 0.0
         self.auto_trim = 0.0
@@ -196,10 +197,6 @@ class LiveHome:
             targets[:] = s.away
             for r in reasons:
                 r.update(why=MANUAL_AWAY, mods=[])
-        for i, until in self.boost_until.items():
-            if t < until:
-                targets[i] = s.comfort
-                reasons[i].update(why=BOOST, mods=[], until=clock(until))
         if self.wallet.needs_topup:
             targets[:] = s.away
             for r in reasons:
@@ -224,7 +221,6 @@ class LiveHome:
             self.wallet.pay(t, kwh, float(self.price[s_day]), float(self.carbon[s_day]))
             self.cost_log.append(kwh * float(self.price[s_day]))
             self.t += 1
-            self.boost_until = {i: u for i, u in self.boost_until.items() if u > self.t}
         self.targets, self.reasons = self._decide(self.t)
 
     def room_index(self, name: str) -> int:
@@ -232,14 +228,30 @@ class LiveHome:
             raise ValueError(f"unknown room {name!r}")
         return self.names.index(name)
 
-    def boost(self, room: str, hours: float = 1.0) -> None:
-        if not 0.25 <= hours <= MAX_BOOST_H:
-            raise ValueError(f"boost must be 0.25 to {MAX_BOOST_H} hours")
-        self.boost_until[self.room_index(room)] = self.t + int(round(hours * 4))
+    def set_comfort(self, temp: float) -> None:
+        """Daytime comfort temperature for every room (the bedroom keeps its night setting)."""
+        lo, hi = COMFORT_RANGE
+        if not lo <= temp <= hi:
+            raise ValueError(f"comfort must be {lo:.0f} to {hi:.0f}°C")
+        self.settings = replace(self.settings, comfort=float(temp))
         self.targets, self.reasons = self._decide(self.t)
 
-    def cancel_boost(self, room: str) -> None:
-        self.boost_until.pop(self.room_index(room), None)
+    def set_calendar(self, url: str) -> None:
+        """Connect a secret iCal URL, or pass "" to go back to the demo week.
+
+        On failure the current calendar is kept and a generic error is raised
+        (the URL never appears in it).
+        """
+        url = url.strip()
+        if url:
+            events = cal.fetch_ics(url)  # raises without the URL in the message
+            source = "google"
+        else:
+            events, source = cal.parse_ics(cal.demo_calendar(self.week_start)), "demo"
+        self.events, self.calendar_source, self.calendar_error = events, source, None
+        # Re-run the simulated household against the new calendar (demo consistency).
+        self.occ = simulate_occupancy(7, seed=self.seed + 1000)
+        apply_calendar_to_people(self.occ, self.events, self.week_start)
         self.targets, self.reasons = self._decide(self.t)
 
     def set_away(self, on: bool) -> None:
@@ -282,7 +294,6 @@ class LiveHome:
             CAL_WFH: ("WFH", f"Your calendar says you're working from home, so the {name} is kept comfortable."),
             CAL_GUESTS: ("Guests", f"Guests are coming ({r.get('event', '')}), so the {name} is kept comfortable."),
             MANUAL_AWAY: ("Away mode", "Away mode is on, so the house is on frost protection."),
-            BOOST: ("Boost", f"Boosted until {r.get('until', '')}."),
             NO_CREDIT: ("No credit", "Out of credit: safety heating only until you top up."),
         }[why]
         extra = []
@@ -309,6 +320,7 @@ class LiveHome:
         someone is home unless the calendar says otherwise.
         """
         rows = {name: [] for name in self.names}
+        temps = {name: [] for name in self.names}
         levels, labels = [], []
         comfort_line = self.settings.comfort - 1
         for h in range(hours):
@@ -320,6 +332,7 @@ class LiveHome:
                                      trim=min(self.auto_trim + self.manual_trim, self.settings.max_trim))
                 tg = np.maximum(tg, tt)
             for i, name in enumerate(self.names):
+                temps[name].append(round(float(tg[i]), 1))
                 rows[name].append("heat" if tg[i] >= comfort_line - 3 and tg[i] > self.settings.eco else
                                   "eco" if tg[i] > self.settings.away else "off")
             levels.append(self._price_level(steps[0] % STEPS_PER_DAY))
@@ -332,7 +345,7 @@ class LiveHome:
              "to_h": min((e.end - start).total_seconds() / 3600, hours)}
             for e in self.events if e.end > start and e.start < end
         ]
-        return {"hours": labels, "rooms": rows, "price": levels, "events": events}
+        return {"hours": labels, "rooms": rows, "targets": temps, "price": levels, "events": events}
 
     def tips(self) -> list[str]:
         s_day = self.t % STEPS_PER_DAY
@@ -393,7 +406,6 @@ class LiveHome:
                 "heating": bool(self.last_kwh[i] > 1e-4),
                 "status": chip,
                 "why": why,
-                "boost_until": clock(self.boost_until[i]) if i in self.boost_until else None,
             })
         return {
             "clock": clock(t),
@@ -410,7 +422,9 @@ class LiveHome:
             "plan": self.plan(),
             "tips": self.tips(),
             "calendar": {"source": self.calendar_source, "error": self.calendar_error,
+                         "events_this_week": len(self.events),
                          "now": cal.hints(self.events, t, self.week_start)["events"]},
+            "comfort_c": self.settings.comfort,
             "finished": self.finished,
         }
 

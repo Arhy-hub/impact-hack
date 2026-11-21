@@ -26,11 +26,19 @@ def test_home_and_tick(client):
     assert client.post("/api/tick", json={"steps": 4}).json()["clock"] == "Mon 17:00"
 
 
-def test_boost_and_cancel(client):
-    s = client.post("/api/boost", json={"room": "bedroom", "hours": 1}).json()
-    assert s["rooms"][0]["status"] == "Boost"
-    s = client.post("/api/boost/cancel", json={"room": "bedroom"}).json()
-    assert s["rooms"][0]["status"] != "Boost"
+def test_comfort_and_calendar(client):
+    assert client.post("/api/comfort", json={"temp": 21}).json()["comfort_c"] == 21
+    assert client.post("/api/calendar", json={"url": ""}).json()["calendar"]["source"] == "demo"
+    r = client.post("/api/calendar", json={"url": "http://insecure.example/secret-token.ics"})
+    assert r.status_code == 422 and "secret-token" not in r.text
+
+
+def test_boost_removed(client):
+    assert client.post("/api/boost", json={"room": "bedroom", "hours": 1}).status_code == 404
+
+
+def test_static_assets_served(client):
+    assert client.get("/assets/index.html").status_code == 200
 
 
 def test_away_trim_topup(client):
@@ -41,9 +49,9 @@ def test_away_trim_topup(client):
 
 
 @pytest.mark.parametrize("path,body", [
-    ("/api/boost", {"room": "garage", "hours": 1}),        # unknown room -> 422 from LiveHome
-    ("/api/boost", {"room": "Bedroom; drop", "hours": 1}),  # bad pattern
-    ("/api/boost", {"room": "bedroom", "hours": 99}),
+    ("/api/comfort", {"temp": 40}),
+    ("/api/comfort", {"temp": "warm"}),
+    ("/api/calendar", {"url": "x" * 3000}),
     ("/api/tick", {"steps": 1000}),
     ("/api/trim", {"degrees": -1}),
     ("/api/topup", {"pounds": 0}),
