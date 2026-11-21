@@ -342,12 +342,13 @@ class LiveHome:
             tips.append("Electricity is cheap and clean right now. A good time to run the dishwasher or washing machine.")
         elif level == "peak":
             nxt = next((k for k in range(1, 48) if self._price_level((s_day + k) % STEPS_PER_DAY) != "peak"), 0)
-            tips.append(f"Peak prices for about the next {nxt * 15 // 60 or 1} hour(s). Avoid running big appliances if you can.")
+            hrs = max(round(nxt / 4), 1)
+            tips.append(f"Peak prices for about the next {hrs} hour{'s' if hrs > 1 else ''}. Avoid running big appliances if you can.")
         b = self.budget()
         if b["projected_gbp"] > b["budget_gbp"]:
             tips.append(f"You're on track to spend £{b['projected_gbp']:.2f} this week against a £{b['budget_gbp']:.2f} budget. "
                         "Top up, or let Heatwise trim a degree.")
-        if self.occ.people_home[min(self.t, WEEK_STEPS - 1)] == 0 and not self.away_manual:
+        if (self.targets <= self.settings.away + 1e-6).all() and not self.away_manual and not self.wallet.needs_topup:
             tips.append("Nobody's home, so every room is on frost protection. Nothing to do.")
         upcoming = [e for e in self.events if e.kind == "away" and 0 < cal.step_of(e.start, self.week_start) - self.t <= 96]
         for e in upcoming:

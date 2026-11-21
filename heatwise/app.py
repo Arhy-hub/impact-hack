@@ -23,6 +23,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 
@@ -68,7 +69,16 @@ class TopUp(BaseModel):
     pounds: float = Field(gt=0, le=MAX_TOPUP_GBP)
 
 
-def create_app(home_factory=LiveHome) -> FastAPI:
+def default_home() -> LiveHome:
+    """The demo household. ``HEATWISE_BUDGET`` (£/week, default 30) sets the loaded budget."""
+    try:
+        budget = float(os.environ.get("HEATWISE_BUDGET", "30"))
+    except ValueError:
+        budget = 30.0
+    return LiveHome(budget_gbp=min(max(budget, 1.0), MAX_TOPUP_GBP))
+
+
+def create_app(home_factory=default_home) -> FastAPI:
     app = FastAPI(title="Heatwise", docs_url=None, redoc_url=None, openapi_url=None)
     lock = threading.Lock()
     holder = {"home": home_factory()}
