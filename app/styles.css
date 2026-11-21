@@ -232,6 +232,12 @@ button, input { font: inherit; color: inherit; }
 .house .person-name { font: 700 9px var(--text); }
 /* Routine panel (D23) */
 .who { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.sim-wrap { container-type: inline-size; }
+.sim-split { display: grid; gap: 0 16px; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 620px) {
+  .sim-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .sim-house { position: sticky; top: 0; }  /* the house stays in view while you read down the day */
+}
 .patterns { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 .moments { margin-top: 6px; }
 .moment { display: flex; gap: 10px; padding: 3px 0; font-size: .9375rem; }
@@ -259,4 +265,9 @@ button, input { font: inherit; color: inherit; }
   .stage .app { margin: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
   .stage .app { width: 520px; }
   .tabbar { left: calc(50% - 486px); right: auto; width: 520px; }
+}
+/* Big laptop or projector: a wider simulation, so the house and "Today, step by step" sit side by side (D26) */
+@media (min-width: 1360px) {
+  .stage { grid-template-columns: 520px 760px; }
+  .tabbar { left: calc(50% - 656px); }
 }

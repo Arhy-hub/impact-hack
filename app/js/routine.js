@@ -54,23 +54,32 @@ function response(v) {
   return `${v.warm ? "✓ Warm" : "✗ Still warming"}: ${v.temp}° on arrival (aiming for ${v.target}°${when})`;
 }
 
-export function routineView(state) {
+// The house drawing with "Today, step by step" beside it (stacks on narrow screens), then the usual day.
+export function simView(state, houseCard) {
   const r = state.routine;
-  if (!r) return [];
+  if (!r) return [heading("The house right now"), houseCard];
+  const [usual, today] = [routineParts(r).usual, routineParts(r).today];
+  return [
+    h("div", { class: "sim-wrap" }, h("div", { class: "sim-split" },
+      h("div", { class: "sim-house" }, heading("The house right now"), houseCard),
+      h("div", {}, heading("Today, step by step"), today))),
+    heading(`A usual ${r.day}`), usual,
+  ];
+}
+
+function routineParts(r) {
   // Short "out" gaps between two home blocks are just timing noise; hide them unless happening now.
   const mins = (a, b) => (Number(b.slice(0, 2)) * 60 + Number(b.slice(3))) - (Number(a.slice(0, 2)) * 60 + Number(a.slice(3)));
   const rows = r.today.filter(v => v.room || v.when === "now" || mins(v.start, v.end) >= 60);
   const changes = r.today.filter(v => v.room && variation(v) && v.when !== "later");
-  return [
-    heading(`A usual ${r.day}`),
-    card(
+  return {
+    usual: card(
       h("div", { class: "patterns" }, Object.entries(r.pattern).map(([name, blocks]) => personPattern(name, blocks))),
       h("p", { class: "note", style: "margin-bottom:0" },
         `Real days vary: times shift by up to ${r.jitter_min} minutes`
         + (r.day === "weekday" ? `, and on ${Math.round(r.wfh_chance * 100)}% of weekdays someone works from home` : "")
         + ". Heatwise never sees this timetable. It learns it from motion sensors and phones.")),
-    heading("Today, step by step"),
-    card(
+    today: card(
       changes.length
         ? h("div", { class: "changes" }, h("b", {}, "Different from usual so far"),
             changes.map(v => h("div", { class: "change" }, dot(v.person),
@@ -86,5 +95,5 @@ export function routineView(state) {
               vary ? h("span", { class: `vary ${vary.tone}` }, vary.text) : null),
             v.room ? h("div", { class: "small muted" }, response(v)) : null));
       }))),
-  ];
+  };
 }

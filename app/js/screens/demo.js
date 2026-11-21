@@ -3,7 +3,7 @@
 import { api, store } from "../api.js";
 import { time12 } from "../format.js";
 import { houseView } from "../house.js";
-import { routineView } from "../routine.js";
+import { simView } from "../routine.js";
 import { button, card, empty, ghosts, h, heading, icon, note, seg } from "../ui.js";
 
 export const title = "Demo";
@@ -48,7 +48,7 @@ export function render({ state, loading, error }) {
     return [h("div", { class: "top" }, h("h1", { class: "hello" }, "Demo")),
       empty({ iconName: "play", title: "You're in live mode", message: "Switch to the example week to play through a whole week in a minute.",
         actionLabel: "Use the example week", onAction: () => api.mode("simulated") }),
-      heading("The house right now"), card(houseView(state)), routineView(state)];
+      simView(state, card(houseView(state)))];
   }
   const day = Math.floor(state.events.length >= 0 ? 0 : 0);
   return [
@@ -61,9 +61,7 @@ export function render({ state, loading, error }) {
         String(speed), v => { speed = Number(v); api.load(); }, "Speed")),
       h("div", { class: "small muted", style: "margin:12px 0 6px" }, "Jump to"),
       h("div", { class: "days" }, DAYS.map((d, i) => button(d, () => { stop(); api.jump(i, 7); }, "quiet")))),
-    heading("The house right now"),
-    card(houseView(state)),
-    routineView(state),
+    simView(state, card(houseView(state))),
     heading("Luke's notes"),
     card(state.log.length
       ? h("div", { class: "feed" }, [...state.log].reverse().slice(0, 12).map(l => h("div", { class: `item ${l.kind}` },
