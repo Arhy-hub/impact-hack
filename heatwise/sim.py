@@ -44,9 +44,9 @@ class Room:
 
 # Toy house: 3 rooms. Values are made up but in a plausible range for a UK terrace.
 DEFAULT_ROOMS = (
-    Room("bedroom", tau_h=10.0, c_kwh_per_k=0.8, q_max_kw=2.5),
-    Room("kitchen", tau_h=7.0, c_kwh_per_k=0.9, q_max_kw=3.0),
-    Room("living", tau_h=9.0, c_kwh_per_k=1.2, q_max_kw=3.0),
+    Room("bedroom", tau_h=22.0, c_kwh_per_k=1.0, q_max_kw=2.5),
+    Room("kitchen", tau_h=18.0, c_kwh_per_k=1.0, q_max_kw=2.5),
+    Room("living", tau_h=24.0, c_kwh_per_k=1.4, q_max_kw=3.0),
 )
 
 # Routines: (start hour, end hour, room). Gaps mean "out of the house".

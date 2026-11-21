@@ -30,6 +30,10 @@ from .sim import STEPS_PER_DAY
 @dataclass(frozen=True)
 class Settings:
     comfort: float = 20.0
+    sleep: float = 17.0  # bedroom comfort overnight
+    sleep_hours: tuple[float, float] = (23.0, 7.0)
+    sleep_room: int = 0  # index of the bedroom in the house's rooms
+    night_setback: float = 16.0  # timer baseline overnight
     eco: float = 17.0
     away: float = 12.0  # safety floor, never trimmed below
     use_threshold: float = 0.4
@@ -40,6 +44,16 @@ class Settings:
     bad_quantile: float = 0.75
     green_weight_p_per_kg: float = 10.0  # pence we'd pay to avoid 1 kg CO2
     max_trim: float = 3.0
+
+
+def comfort_targets(step: int, n_rooms: int, settings: Settings = Settings()) -> np.ndarray:
+    """Comfort temperature per room at ``step``: 20° by day, the bedroom at 17° overnight."""
+    hour = (step % STEPS_PER_DAY) * 24 / STEPS_PER_DAY
+    start, end = settings.sleep_hours
+    comfort = np.full(n_rooms, settings.comfort)
+    if hour >= start or hour < end:
+        comfort[settings.sleep_room] = settings.sleep
+    return comfort
 
 
 def slot_scores(price_p: np.ndarray, carbon_g: np.ndarray, settings: Settings) -> np.ndarray:
@@ -55,12 +69,18 @@ def heatwise_targets(
     day_scores: np.ndarray,
     trim: float = 0.0,
     settings: Settings = Settings(),
+    comfort: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Target temperature per room. All inputs are things a real house can sense or forecast."""
+    """Target temperature per room. All inputs are things a real house can sense or forecast.
+
+    ``comfort`` is the per-room comfort temperature (see ``comfort_targets``);
+    it defaults to ``settings.comfort`` everywhere.
+    """
     s = settings
+    comfort = np.full(len(p_soon), s.comfort) if comfort is None else comfort
     in_use = motion_recent | (p_soon >= s.use_threshold)
     base = s.eco if people_home > 0 else s.away
-    targets = np.where(in_use, s.comfort, base).astype(float)
+    targets = np.where(in_use, comfort, np.minimum(base, comfort)).astype(float)
 
     good = score <= np.quantile(day_scores, s.good_quantile)
     bad = score >= np.quantile(day_scores, s.bad_quantile)
@@ -74,13 +94,17 @@ def heatwise_targets(
 
 
 def timer_targets(step: int, weekday: int, n_rooms: int, settings: Settings = Settings()) -> np.ndarray:
-    """Old-style timer: every room to comfort in fixed windows, frost protection otherwise."""
+    """Old-style timer: every room to comfort in fixed windows, a night setback
+    overnight, and off (frost protection) during the weekday working day."""
     hour = (step % STEPS_PER_DAY) * 24 / STEPS_PER_DAY
     if weekday >= 5:
-        on = 8.0 <= hour < 23.0
+        on = 7.5 <= hour < 23.0
     else:
-        on = 6.5 <= hour < 8.5 or 17.0 <= hour < 22.5
-    return np.full(n_rooms, settings.comfort if on else settings.away)
+        on = 6.0 <= hour < 9.0 or 16.5 <= hour < 23.0
+    night = hour >= 23.0 or hour < (7.5 if weekday >= 5 else 6.0)
+    if on:
+        return np.full(n_rooms, settings.comfort)
+    return np.full(n_rooms, settings.night_setback if night else settings.away)
 
 
 def budget_trim(spent_p: float, budget_p: float, day_index: int, period_days: int,

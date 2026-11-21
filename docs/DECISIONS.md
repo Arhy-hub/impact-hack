@@ -82,3 +82,26 @@ Every choice made while building Heatwise, and why. Newest at the bottom of each
 | W4 | The budget is what the human loaded through checkout. The agent never tops up on its own. | Humans approve spending, and the agent spends within what was approved (the "who approves" judging question). |
 | W5 | Input validation: `customer_ref` limited to `[A-Za-z0-9_-]{1,64}`, top-ups to £0 to £500, API docs pages turned off | Safe to expose if the repo or demo goes public. Stops injection-style input and silly balances. |
 | W6 | Request models defined at module level | With `from __future__ import annotations`, FastAPI couldn't resolve models defined inside a function and treated the body as a query parameter (a test caught this). |
+
+## Week runner and retuning (`heatwise/compare.py`, `heatwise/run_toy.py`)
+
+| # | Decision | Why |
+|---|---|---|
+| R1 | Every simulated day reuses the same day of signals | Toy simplification: one day of live prices, carbon and weather is enough to test the logic. The MVP should fetch several days or loop over a recorded week. |
+| R2 | Comfort % = share of truly occupied room-steps within 1° of that room's comfort temperature | Measures comfort where people actually are. The 1° tolerance lets Heatwise coast −1° at the peak without counting it as a failure. |
+| S9 | **Retuned rooms: τ 18 to 24 h, C 1.0 to 1.4 kWh/°C** (was τ 7 to 10 h) | The first toy run cost about £67 a week for 3 rooms, which is far too leaky. Real UK homes cool over roughly 20 to 50 hours. |
+| C8 | **Bedroom comfort is 17° from 23:00 to 07:00** | Otherwise Heatwise heated sleepers to 20° all night while the timer left them at 12°, so the comparison was unfair in both directions. |
+| C9 | **Timer baseline sets back to 16° overnight and is off (12°) on the weekday daytime** | That's how most UK timer-plus-thermostat setups behave. The first version switched off overnight, which made the timer look cheaper and colder than reality. |
+| O8 | **Forecast horizon is 3 hours (12 steps)**, up from 1 hour | A sweep on the toy week (threshold 0.4): 1 h → £39.96 and comfort 83.6%; 2 h → £41.25 and 93.5%; **3 h → £40.79 and 97.8%**. A room at 12° needs several hours to reach 20°, so 1 h was too short. At 3 h the occupancy model still beats the heatmap: Brier 0.021 against 0.029. |
+| R3 | Default weekly budget £40 | It's just below what Heatwise would spend unconstrained (£40.79), so the demo shows the trim working: it ends at £38.27 with up to 2° of trim. £3 shows the out-of-credit path. |
+| R4 | `web/data.json` is generated **and committed** | The page works straight from the repo (for example on GitHub Pages) with no Python. It's all synthetic or public data. |
+
+**Toy results (offline snapshot from 2026-11-21, seed 0, 1 week, 3 rooms):**
+
+| | Cost | CO₂ | Energy | Comfort |
+|---|---|---|---|---|
+| Timer | £44.24 | 25.18 kg | 116.7 kWh | 84.6% |
+| Heatwise | £40.79 | 23.80 kg | 113.1 kWh | 97.8% |
+| Heatwise, £40 budget | £38.27 | — | — | 76.1% |
+
+So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. These numbers are synthetic; they show the idea works, not what a real home would save. Prices on the snapshot day were high (28 to 53p/kWh), which inflates the £ figures.

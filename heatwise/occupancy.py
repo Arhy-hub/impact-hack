@@ -30,7 +30,7 @@ from sklearn.metrics import brier_score_loss, roc_auc_score
 
 from .sim import STEPS_PER_DAY, Occupancy, simulate_occupancy
 
-DEFAULT_HORIZON = 4  # steps = 1 hour ahead
+DEFAULT_HORIZON = 12  # steps = 3 hours ahead (covers warm-up from 12°C; DECISIONS O8)
 MOTION_LAGS = (0, 1, 2, 4, 8)  # steps back: now, 15, 30, 60, 120 min
 
 
