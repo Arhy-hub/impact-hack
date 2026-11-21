@@ -22,7 +22,8 @@ export function render({ state }, nav, roomId) {
     h("section", { class: "hero", "aria-label": `${roomName(r.name)} is ${deg(r.temp)}. ${mood.text}` },
       h("div", { class: "label" }, mood.text),
       h("div", { class: "big" }, deg(r.temp)),
-      h("div", { class: "say" }, `Aiming for ${r.target.toFixed(0)}°`)),
+      h("div", { class: "say" }, `Aiming for ${r.target.toFixed(0)}°` +
+        (r.warmup_min ? ` · takes about ${r.warmup_min >= 60 ? `${Math.floor(r.warmup_min / 60)}h ${r.warmup_min % 60}m` : `${r.warmup_min} min`} to warm up` : ""))),
     card(meter(r.temp, r.target, { heating: r.heating })),
     heading("Set this room"),
     card(

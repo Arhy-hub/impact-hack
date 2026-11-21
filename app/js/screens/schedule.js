@@ -1,7 +1,7 @@
 // Plan: when will each room heat today, when is energy cheap, and what's in the calendar?
 import { api } from "../api.js";
 import { roomName, time12 } from "../format.js";
-import { badge, card, empty, ghosts, h, heading, note } from "../ui.js";
+import { badge, card, empty, ghosts, h, heading, icon, note } from "../ui.js";
 
 export const title = "Plan";
 
@@ -27,7 +27,23 @@ export function render({ state, loading, error }) {
   const cheap = runs(p.price, "cheap");
 
   return [
-    h("div", { class: "top" }, h("div", {}, h("h1", { class: "hello" }, "Today's plan"), h("div", { class: "date" }, `Next 24 hours from ${time12(state.clock.slice(4))}`))),
+    h("div", { class: "top" }, h("div", {}, h("h1", { class: "hello" }, "Plan"), h("div", { class: "date" }, "Your week and what Heatwise will do"))),
+    heading("This week"),
+    // A simple agenda: every day of the week, with its events as coloured chips.
+    card(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => {
+      const evs = state.events.filter(e => e.day === day);
+      const today = state.clock.startsWith(day);
+      return h("div", { class: "event", style: today ? "background:var(--accent-soft);margin:0 -18px;padding:0 18px" : "" },
+        h("div", { style: "min-width:48px;font-weight:800" + (today ? ";color:var(--accent)" : "") }, today ? "Today" : day),
+        h("div", { style: "flex:1;display:flex;flex-wrap:wrap;gap:6px;padding:8px 0" }, evs.length
+          ? evs.map(e => {
+              const [ic, tone] = EVENT_ICON[e.kind] || ["calendar", ""];
+              return h("span", { class: `pill ${tone}`, title: e.effect }, icon(ic, 14), `${e.title} · ${time12(e.start_label.slice(4))}`);
+            })
+          : h("span", { class: "note", style: "margin:0" }, "Nothing planned")));
+    })),
+    note("Away trips rest the house; working from home and guests keep rooms warm. Add events from the Demo tab."),
+    heading("Heating, next 24 hours"),
     // One row per room: when it heats next (and after that), in plain words.
     card(Object.entries(p.rooms).map(([name, cells]) => {
       const rs = runs(cells, "heat");
@@ -41,15 +57,6 @@ export function render({ state, loading, error }) {
     heading("Cheapest times"),
     card(h("div", { class: "event" }, badge("bolt", "calm"),
       h("span", {}, cheap.length ? `Run the washing machine or dishwasher at ${spans(cheap.slice(0, 2))}.` : "No especially cheap times today."))),
-    heading("From your calendar"),
-    state.calendar.upcoming.length
-      ? card(state.calendar.upcoming.map(e => {
-          const [ic, tone] = EVENT_ICON[e.kind] || ["calendar", ""];
-          return h("div", { class: "event" }, badge(ic, tone),
-            h("div", { style: "flex:1" }, h("div", { class: "t" }, e.title), h("div", { class: "note", style: "margin:0" }, e.effect)),
-            h("div", { class: "small muted" }, e.now ? "Now" : time12(e.start)));
-        }))
-      : empty({ iconName: "calendar", title: "Nothing coming up", message: "Trips, working from home and guests will change your heating here." }),
     state.calendar.source === "demo" ? note("This is an example week. Connect your own calendar in Settings.") : null,
   ];
 }

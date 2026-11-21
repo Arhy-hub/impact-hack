@@ -175,6 +175,22 @@ class House:
             q[i] = min(max(needed, 0.0), room.q_max_kw)
         return q
 
+    def warmup_hours(self, target: np.ndarray, t_out: float) -> np.ndarray:
+        """Hours each room needs at full heater power to reach ``target`` from where it is now.
+
+        Exact for the RC model: T(t) = T_eq + (T_0 - T_eq) e^(-t/tau), where
+        T_eq = T_out + q_max / UA is the temperature the heater would settle at.
+        Returns 0 if already warm enough and inf if the heater can never get there.
+        """
+        out = np.zeros(len(self.rooms))
+        for i, room in enumerate(self.rooms):
+            t0, goal = self.state.temps[i], target[i]
+            if t0 >= goal:
+                continue
+            t_eq = t_out + room.q_max_kw / room.ua_kw_per_k
+            out[i] = np.inf if goal >= t_eq else -room.tau_h * np.log((goal - t_eq) / (t0 - t_eq))
+        return out
+
     def step(self, q_kw: np.ndarray, t_out: float) -> np.ndarray:
         """Advance one step with heat ``q_kw`` per room. Returns electricity used (kWh)."""
         for i, room in enumerate(self.rooms):

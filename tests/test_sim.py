@@ -61,3 +61,16 @@ def test_same_seed_same_result():
     a = simulate_occupancy(n_days=3, seed=9)
     b = simulate_occupancy(n_days=3, seed=9)
     assert (a.occupied == b.occupied).all()
+
+
+def test_warmup_hours_matches_simulation():
+    house = House()
+    target = np.full(3, 20.0)
+    hours = house.warmup_hours(target, t_out=5.0)
+    assert np.all(hours > 0) and np.all(np.isfinite(hours))
+    # Run at full power for that long: every room should be at (or just past) target.
+    steps = int(np.ceil(hours.max() * 4))
+    for _ in range(steps):
+        house.step(np.array([r.q_max_kw for r in DEFAULT_ROOMS]), t_out=5.0)
+    assert np.all(house.state.temps >= 19.9)
+    assert np.all(House().warmup_hours(np.full(3, 10.0), 5.0) == 0)

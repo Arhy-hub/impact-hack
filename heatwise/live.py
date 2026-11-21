@@ -32,7 +32,7 @@ from .controller import (
     AWAY, COAST, ECO, EXPECTED, IN_USE, PREHEAT, TRIM,
     Settings, comfort_targets, decide, slot_scores,
 )
-from .occupancy import OccupancyModel
+from .occupancy import HeatmapBaseline, OccupancyModel
 from .signals import get_signals
 from .sim import DAY_NAMES, DEFAULT_ROOMS, STEPS_PER_DAY, House, simulate_occupancy
 from .supplier import LocalSupplier, make_supplier
@@ -126,6 +126,9 @@ class LiveHome:
         apply_calendar_to_people(self.occ, self.events, self.week_start)
         train = simulate_occupancy(35, seed=seed)
         self.model = OccupancyModel().fit(train)
+        # Routine look-ahead at several horizons, so each room can look exactly as far
+        # ahead as it takes to warm up (DECISIONS W-UP).
+        self.lookahead = {h: HeatmapBaseline(h).fit(train) for h in (2, 4, 6, 8, 12, 16)}
         # Prior for the budget projection: what a typical week costs with Heatwise (DECISIONS L3).
         typical = run_week("heatwise", simulate_occupancy(7, seed=seed + 2000), self.signals,
                            predictor=self.model, settings=settings)
@@ -196,6 +199,15 @@ class LiveHome:
             motion = self.occ.motion[t] | (self.occ.motion[t - 1] if t > 0 else False)
         if p_soon is None:
             p_soon = self.model.predict_proba(self.occ, t)
+            # Per-room warm-up: look ahead exactly as long as this room takes to heat.
+            if getattr(self, "use_warmup", True):
+                need = self.house.warmup_hours(comfort_targets(t, n, s), self.temp_out[s_day]) + 0.25
+                self.warmup_h = need
+                for i in range(n):
+                    steps = int(np.ceil(min(need[i], 4.0) * 4))
+                    h = min(self.lookahead, key=lambda k: (k < steps, abs(k - steps)))
+                    p_soon[i] = max(p_soon[i] if steps >= 12 else 0.0,
+                                    self.lookahead[h].predict_proba(self.occ, t)[i])
         if people_home is None:
             people_home = int(self.occ.people_home[t])
         trim = self._trim() if trim is None else trim
@@ -621,6 +633,8 @@ class LiveHome:
                 "target": round(float(self.targets[i]), 1),
                 "heating": bool(self.last_kwh[i] > 1e-4),
                 "comfort": self.room_comfort.get(i, self.settings.comfort),
+                "warmup_min": None if not np.isfinite(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i])
+                              else int(round(getattr(self, "warmup_h", np.zeros(len(self.rooms)))[i] * 60)),
                 "custom": i in self.room_comfort,
                 "status": chip,
                 "why": why,
