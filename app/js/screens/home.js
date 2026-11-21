@@ -28,7 +28,7 @@ export function render({ state, loading, error }, nav) {
   return [
     h("div", { class: "top" },
       h("div", {}, h("h1", { class: "hello" }, greeting(s.clock)), h("div", { class: "date" }, s.mode === "realtime"
-        ? `Live · updated ${new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit" })}`
+        ? `Live · updated ${new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(" ", "")}`
         : `Example week · ${s.clock.slice(0, 3)} ${time12(s.clock.slice(4))}`)),
       toggle(s.away, on => api.away(on), "Away")),
     h("section", { class: "hero", "aria-label": `Inside ${deg(avg)}. ${sentence(s)}` },
