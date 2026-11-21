@@ -658,6 +658,8 @@ class LiveHome:
                 s, e, ri = day0 + k, day0 + j, int(day[k])
                 visit = {"person": name, "room": self.names[ri] if ri >= 0 else None,
                          "start": hhmm(s), "end": hhmm(e), "when": "later" if s > t else "now" if e > t else "done"}
+                if ri >= 0:
+                    visit["vs_usual"] = self._vs_usual(routines[name], self.names[ri], k / 4, j / 4, weekend)
                 if ri >= 0 and s <= t and np.isfinite(self.hist_target[s, ri]):
                     goal = float(self.hist_target[s, ri])
                     b = s
@@ -672,6 +674,16 @@ class LiveHome:
         today.sort(key=lambda v: (v["start"], v["person"]))
         return {"day": "weekend" if weekend else "weekday", "jitter_min": 30, "wfh_chance": 0.15,
                 "pattern": pattern, "today": today}
+
+    @staticmethod
+    def _vs_usual(blocks, room: str, start_h: float, end_h: float, weekend: bool) -> dict:
+        """How a visit compares with the usual timetable: minutes early or late, or not usual at all."""
+        same = [b for b in blocks if b[2] == room and abs(b[0] - start_h) <= 1.5]
+        if same:
+            a = min(same, key=lambda b: abs(b[0] - start_h))[0]
+            return {"shift_min": 0 if a == 0 else int(round((start_h - a) * 60 / 5) * 5)}
+        wfh = not weekend and room == "living" and start_h <= 9.5 and end_h >= 16.5
+        return {"unusual": True, "wfh": wfh}
 
     def _step_fraction(self) -> float:
         """Real-time mode: how far (0 to 1) the real clock is into the current 15-minute step."""

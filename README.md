@@ -10,17 +10,17 @@ Built for Hack for Impact (Imperial College London, 21 Nov 2026): AI + payments 
 
 | | Cost | CO₂ | Comfort |
 |---|---|---|---|
-| Old-style timer | £44.24 | 25.2 kg | 84.6% |
-| **Heatwise** | **£40.79** | **23.8 kg** | **97.8%** |
+| Old-style timer | £46.94 | 26.6 kg | 69.8% |
+| **Heatwise** | **£42.99** | **25.0 kg** | **96.4%** |
 
-That's **7.8% cheaper with 5.5% less CO₂, and people are comfortable far more of the time**. With a £40 weekly budget, the agent trims comfort by up to 2° and finishes at £38.27.
+That's **8.4% cheaper with 6.3% less CO₂, and people are comfortable far more of the time** (21°C in rooms in use, 18°C bedroom overnight; offline signals snapshot, `python -m heatwise.run_toy --offline`). With a £40 weekly budget, the agent trims comfort by up to 2° and finishes at £39.56.
 
 The occupancy model (routine plus live motion) predicts room use better than the routine heatmap alone: Brier score **0.021 vs 0.029**.
 
 ## How it works
 
 1. **Learn routines.** Motion sensors and phones give a noisy view of who is home and where. A routine heatmap gives a prior, and a logistic regression corrects it with live sensor signals to predict *"will this room be used in the next 3 hours?"*
-2. **Decide targets.** Rooms in use, or about to be, are heated to comfort (20°C, or 17°C for the bedroom overnight). Other rooms hold eco (17°C), or 12°C when nobody's home. That 12° safety floor is never overridden.
+2. **Decide targets.** Rooms in use, or about to be, are heated to comfort (21°C, or 18°C for the bedroom overnight). Other rooms hold eco (17°C), or 12°C when nobody's home. That 12° safety floor is never overridden.
 3. **Be price- and carbon-aware.** Each half-hour gets a score: price plus a carbon cost. In the best quarter of the day, rooms likely to be used get pre-heated by 1°. In the worst quarter, occupied rooms coast 1° lower.
 4. **Pay for it.** The agent buys energy in 10p blocks from a supplier behind a paywall. The human loads the budget once through checkout, and the agent spends within it. If the month is heading over budget, it trims comfort gradually. If credit runs out, it keeps safety heating on from emergency credit and raises a top-up request with a checkout link.
 
@@ -98,7 +98,7 @@ Configuration, all optional, in `.env` (see `.env.example`):
 
 | Variable | What it does |
 |---|---|
-| `HEATWISE_BUDGET` | Weekly budget loaded in the demo (default £30, chosen so the approval flow appears on Monday evening) |
+| `HEATWISE_BUDGET` | Weekly budget loaded in the demo (default £45: a typical week at 21° costs about £41, so there is no budget trim until you tighten it. Set a daily limit in Budget → Your limits to show the approval moment) |
 | `HEATWISE_ICAL_URL` | Your Google Calendar's **secret address in iCal format** (Google Calendar → Settings → your calendar → Integrate calendar). Events with "away/trip/flight/holiday", "WFH" or "guests/friends over" adjust the heating. Without it, a demo week is used. **Treat it like a password.** |
 | `SOLVAPAY_SECRET_KEY`, `SOLVAPAY_PRODUCT_REF` | Real SolvaPay sandbox payments (see below) |
 

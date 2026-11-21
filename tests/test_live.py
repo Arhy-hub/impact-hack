@@ -161,3 +161,29 @@ def test_realtime_temps_move_within_a_step(monkeypatch):
     monkeypatch.setattr(home, "_step_fraction", lambda: 0.0)
     temps0, q0 = home._live_temps()
     assert q0 is None and float(temps0[i]) == start
+
+
+def test_routine_compares_today_with_usual():
+    from heatwise.live import LiveHome
+    from heatwise.sim import WEEKDAY_ROUTINES
+
+    alex = WEEKDAY_ROUTINES["alex"]
+    assert LiveHome._vs_usual(alex, "kitchen", 7.25, 8.0, False) == {"shift_min": 15}
+    assert LiveHome._vs_usual(alex, "kitchen", 6.5, 7.5, False) == {"shift_min": -30}
+    assert LiveHome._vs_usual(alex, "living", 9.0, 17.0, False) == {"unusual": True, "wfh": True}
+
+    home = LiveHome(budget_gbp=45)
+    home.tick(40)
+    s = home.state()
+    assert {p["name"] for p in s["people"]} == {"alex", "sam"}
+    r = s["routine"]
+    assert r["day"] in ("weekday", "weekend") and set(r["pattern"]) == {"alex", "sam"}
+    done = [v for v in r["today"] if v["room"] and v["when"] != "later" and "target" in v]
+    assert done and all({"temp", "warm", "vs_usual"} <= set(v) for v in done)
+
+
+def test_default_comfort_is_realistic():
+    from heatwise.controller import Settings
+
+    s = Settings()
+    assert s.comfort == 21.0 and s.sleep == 18.0

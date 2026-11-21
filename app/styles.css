@@ -232,7 +232,15 @@ button, input { font: inherit; color: inherit; }
 .house .person-name { font: 700 9px var(--text); }
 /* Routine panel (D23) */
 .who { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
-.routine-line { margin: 8px 0 0; line-height: 1.45; }
+.patterns { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.moments { margin-top: 6px; }
+.moment { display: flex; gap: 10px; padding: 3px 0; font-size: .9375rem; }
+.m-time { flex: none; width: 58px; font-weight: 700; color: var(--muted); }
+.changes { margin-bottom: 10px; }
+.change { padding: 4px 0; font-size: .9375rem; }
+.vary { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font: 700 .75rem var(--text); vertical-align: 1px; }
+.vary.shift { background: var(--track); color: var(--ink); }
+.vary.off { background: var(--accent-soft); color: var(--accent); }
 .routine .visit { display: flex; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
 .routine .visit:first-child { border-top: 0; }
 .routine .visit.later { opacity: .6; }
