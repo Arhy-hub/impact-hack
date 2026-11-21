@@ -9,3 +9,4 @@ solvapay
 pytest
 icalendar
 websocket-client
+anthropic

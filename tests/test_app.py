@@ -71,3 +71,12 @@ def test_no_docs_or_secrets_exposed(client, monkeypatch):
     assert client.get("/openapi.json").status_code == 404
     text = client.get("/api/home").text
     assert "sk_" not in text and "ical" not in text.lower()
+
+
+def test_ask_and_confirm(client, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    r = client.post("/api/ask", json={"text": "I'm going away"}).json()
+    assert r["engine"] == "rules" and r["action"] == {"type": "away", "value": True}
+    assert client.post("/api/confirm", json=r["action"]).json()["away"] is True
+    assert client.post("/api/confirm", json={"type": "comfort", "value": 99}).status_code == 422
+    assert client.post("/api/ask", json={"text": ""}).status_code == 422

@@ -66,6 +66,15 @@ class Trim(BaseModel):
     degrees: float = Field(ge=0, le=3)
 
 
+class Ask(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+
+
+class Confirm(BaseModel):
+    type: str = Field(pattern=r"^(away|comfort|trim)$")
+    value: bool | float
+
+
 class TopUp(BaseModel):
     pounds: float = Field(gt=0, le=MAX_TOPUP_GBP)
 
@@ -141,6 +150,25 @@ def create_app(home_factory=default_home) -> FastAPI:
     @app.post("/api/topup")
     def topup(body: TopUp):
         return act(lambda h: h.topup(body.pounds))
+
+    @app.post("/api/ask")
+    def ask(body: Ask):
+        from .assistant import ask as assistant_ask
+
+        with lock:
+            state = holder["home"].state()
+        return assistant_ask(body.text, state)
+
+    @app.post("/api/confirm")
+    def confirm(body: Confirm):
+        from .assistant import validate
+
+        action = validate(body.model_dump())
+        if not action:
+            raise HTTPException(422, "That change isn't allowed.")
+        run = {"away": lambda h: h.set_away(action["value"]), "comfort": lambda h: h.set_comfort(action["value"]),
+               "trim": lambda h: h.set_trim(action["value"])}[action["type"]]
+        return act(run)
 
     @app.post("/api/reset")
     def reset():
