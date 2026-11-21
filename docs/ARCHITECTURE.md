@@ -31,6 +31,27 @@
 
 `compare.run_week` loops this over a week (672 steps) and scores it. `run_toy` runs the timer, Heatwise, and Heatwise with a paid budget, then writes `web/data.json` for the page.
 
+## The household app (phase 2)
+
+```
+ app/index.html  ──fetch──▶  heatwise/app.py (FastAPI, one lock)
+   room cards, budget,         GET /api/home · POST tick / boost / away / trim / topup / reset
+   plan, tips                         │
+                                      ▼
+                             heatwise/live.py  LiveHome
+                             ├─ clock (15-min steps, Monday 16:00 start)
+                             ├─ _decide(t): controller.decide (reasons)
+                             │     → calendar hints → away toggle → Boost → out of credit → floor 12°
+                             ├─ tick(): House.step + Wallet.pay
+                             ├─ budget(): spent, projection (prior → observed), credit
+                             ├─ plan(): next 24 h from the routine heatmap + calendar
+                             └─ state(): JSON for the page (template "why" sentences)
+                                      ▲
+                             heatwise/calendar.py  secret iCal URL or demo week → hints
+```
+
+Every API action returns the full state, so the page simply re-renders. Status chips and explanations come from reason codes (`controller.decide`), so an LLM can reword them later without changing the API.
+
 ## Modules
 
 | Module | Main pieces | Notes |
@@ -43,6 +64,9 @@
 | `wallet.py` | `Wallet`, `Receipt` | Buys blocks as needed. Emergency credit on 402. |
 | `compare.py` | `run_week`, `WeekResult` | Cost, CO₂, kWh, comfort %, plus per-step logs. |
 | `run_toy.py` | `main` | CLI: `--budget`, `--offline`, `--seed`, `--out`. |
+| `calendar.py` | `parse_ics`, `fetch_ics`, `classify`, `hints`, `demo_calendar` | Keyword classes: away, wfh, guests. Pre-heat 2 h before an away event ends. |
+| `live.py` | `LiveHome` (`tick`, `boost`, `set_away`, `set_trim`, `topup`, `state`) | Override priority and budget projection: see DECISIONS L1 and L3. |
+| `app.py` | `create_app`, `default_home`, `app` | Serves `app/index.html`. Docs/OpenAPI off. Reads `.env`. |
 
 ## Interfaces worth knowing
 
@@ -60,6 +84,9 @@
 | `test_signals.py` | API parsing and slot ordering, gap filling, fallback order |
 | `test_controller.py` | Every rule, the safety floor, timer schedule, budget trim |
 | `test_payments.py` | 402 → checkout → 200, block buying, emergency credit, input validation over HTTP |
+| `test_calendar.py` | Keyword classes, demo week, away/return/WFH hints, all-day events, https-only, URL never in errors |
+| `test_live.py` | Clock, Boost and expiry, away mode, calendar WFH/away, trim floor, out of credit then top-up, week end |
+| `test_app.py` | Every endpoint, bad-input rejection (422), reset, no docs or secrets exposed |
 | `test_end_to_end.py` | The full toy run: cheaper, cleaner and at least as comfortable as the timer; stays within budget; tiny budget raises a top-up request |
 
 Not covered automatically: the real SolvaPay sandbox (it needs an account). See the README.

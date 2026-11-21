@@ -150,3 +150,16 @@ So Heatwise is **7.8% cheaper with 5.5% less CO₂ at much higher comfort**. The
 | L5 | The "today's plan" timeline uses the routine heatmap only (future motion is unknown) and assumes someone's home unless the calendar says otherwise | The honest forecast of what it will do. Live motion then refines it as the day happens. |
 | L6 | Status chips and "why" sentences are templates built from the controller's reason codes. Probabilities of 95% or more read as "very likely". | Works with no LLM. The LLM can reword these later without changing the API. "100% chance" sounded wrong. |
 | L7 | The simulated week starts Monday 16:00, and a demo clock moves time forward | Shows the evening routine straight away. The pitch can fast-forward through a day. |
+
+### App (`heatwise/app.py`, `app/index.html`)
+
+| # | Decision | Why |
+|---|---|---|
+| U1 | A mobile web app (FastAPI with one static page), styled after the Hive app: greeting, away switch, room cards with actual and target temperatures and a Boost button | Chosen by the team. It works on any phone through a link, with no app store or build step. The Hive layout is familiar to UK smart-heating users. |
+| U2 | Every endpoint returns the full home state | The page is a pure render of the server state: no client-side state to get out of sync, and simple to test. |
+| U3 | A demo clock (+15m, +1h, Play, Reset) instead of real time | A real week is too slow for a 3-minute pitch. |
+| U4 | Demo budget defaults to **£30** a week (`HEATWISE_BUDGET`) | At £30 the projection goes over on Monday evening, so the approval flow (Top up or Trim) shows in the demo. Auto-trim then brings it back on track by Wednesday. The toy run keeps £40. |
+| U5 | Top-up and trim are buttons in the budget card, and the top-up goes through the supplier (local, or the SolvaPay checkout URL opened in a new tab) | "Who approves the spend" is visible and one tap away. |
+| U6 | The "nobody home" tip shows only when every room really is at frost level | The first version showed it while rooms were warming up for people arriving home, which contradicted the room cards. |
+| U7 | No assistant chat yet | The LLM is deferred to the next round (the team's call). The "why" sentences are templates for now. |
+| U8 | DOM built with `textContent`, docs/OpenAPI off, one lock around the household, server bound to 127.0.0.1 in the instructions | Safe defaults if the repo or demo goes public. |

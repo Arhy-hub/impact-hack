@@ -51,6 +51,30 @@ python -m heatwise.signals     # fetch today's live signals and save them as the
 pytest                         # all tests (offline, no keys needed)
 ```
 
+## Using the app
+
+The household app is a phone-first web page in the style of the Hive app:
+
+```bash
+uvicorn heatwise.app:app --host 127.0.0.1 --port 8000
+# open http://127.0.0.1:8000 (best at phone width)
+```
+
+- **Room cards:** actual temperature, target, status (In use, Warming up, Eco, Saving, Away, Boost…), **Boost 1h**, and **Why?** for a one-line explanation of the decision.
+- **Away toggle** (top right): every room drops to the 12°C safety level.
+- **Budget card:** spent this week against the budget you loaded, the projection, and credit left. When heading over budget it offers **Top up £10** or **Trim 1° more**. When out of credit, safety heating only until you top up.
+- **Today's plan:** the next 24 hours per room (heating, eco, off), cheap and peak hours, and calendar events.
+- **Tips:** short, practical suggestions.
+- **Demo clock:** `+15m`, `+1h`, `▶ Play` and `↺` move the simulated week along. The home starts on Monday at 16:00.
+
+Configuration, all optional, in `.env` (see `.env.example`):
+
+| Variable | What it does |
+|---|---|
+| `HEATWISE_BUDGET` | Weekly budget loaded in the demo (default £30, chosen so the approval flow appears on Monday evening) |
+| `HEATWISE_ICAL_URL` | Your Google Calendar's **secret address in iCal format** (Google Calendar → Settings → your calendar → Integrate calendar). Events with "away/trip/flight/holiday", "WFH" or "guests/friends over" adjust the heating. Without it, a demo week is used. **Treat it like a password.** |
+| `SOLVAPAY_SECRET_KEY`, `SOLVAPAY_PRODUCT_REF` | Real SolvaPay sandbox payments (see below) |
+
 ## Running against the SolvaPay sandbox
 
 By default the agent pays a **local stand-in supplier** that behaves like the SolvaPay paywall (402 plus a checkout link). To use real SolvaPay sandbox payments:
@@ -64,7 +88,11 @@ The SolvaPay path is not covered by the automated tests because it needs a live 
 ## Project layout
 
 ```
+app/index.html   the household app page (served by heatwise/app.py)
 heatwise/
+  app.py         FastAPI app: home state, Boost, away, trim, top-up, demo clock
+  live.py        a running household: engine + clock + overrides + calendar + wallet
+  calendar.py    secret iCal link -> events -> away / WFH / guests hints; demo week
   sim.py         simulated house: rooms (RC thermal model), people, noisy sensors
   occupancy.py   routine heatmap + live-sensor model, Brier/AUC evaluation
   signals.py     Octopus Agile prices, grid carbon, weather; offline fallbacks
@@ -73,7 +101,7 @@ heatwise/
   wallet.py      agent pays per step, buys blocks, emergency credit, top-up requests
   compare.py     run a week, score cost / CO2 / comfort
   run_toy.py     the end-to-end toy run; writes web/data.json
-web/             static results page (index.html + generated data.json)
+web/             analyst results page for judges (index.html + generated data.json)
 data/            saved signals snapshot for offline runs
 tests/           pytest suite (offline)
 docs/            ARCHITECTURE.md, DECISIONS.md
@@ -88,7 +116,8 @@ This repo is written to be safe to make public.
 - **No personal data.** Every household, person (`alex`, `sam`) and sensor reading is simulated. The only real data is public market and weather data.
 - **Privacy by design for the real product.** Motion data reveals when people are home, so the plan is to keep it on the local network and never send it to the cloud (see `heatwise-idea.md`).
 - **Fails safe.** The controller never sets a room below 12°C, and losing payment, Wi-Fi or a data feed never switches heating off (emergency credit, then a snapshot, then synthetic data).
-- **Validated input.** The supplier API checks `customer_ref` against `[A-Za-z0-9_-]{1,64}`, caps top-ups at £500, and has its docs pages turned off. Run servers on `127.0.0.1` unless you mean to expose them.
+- **Calendar link is a secret.** It's only read from `.env`, must be https, and never appears in logs, errors or API responses (tests check this). Only derived hints are kept, in memory.
+- **Validated input.** The app API checks room names, Boost hours (0.25 to 6), trim (0 to 3°) and top-ups (up to £200), and its docs/OpenAPI pages are off. The supplier API checks `customer_ref` against `[A-Za-z0-9_-]{1,64}`, caps top-ups at £500, and has its docs pages turned off. Run servers on `127.0.0.1` unless you mean to expose them.
 - **Minimal third-party code in the browser.** One pinned Chart.js file from cdnjs. No trackers or cookies.
 - The event deck (`*.pptx`) is git-ignored and not redistributed.
 
@@ -98,4 +127,4 @@ If you find a security issue, open a private GitHub security advisory on this re
 
 - Real sensors: one ESP32 motion and temperature sensor in one room for 2 weeks, logged to Home Assistant, then rerun the occupancy evaluation on real data.
 - More rooms and people, heat flowing between rooms, a recorded week of real prices.
-- Approval flow in the UI (approve the top-up, or accept a trim), and LLM tips and plain-English overrides ("WFH Tuesday").
+- The LLM layer (next round): plain-English commands ("WFH Tuesday") as confirm cards, reading messy calendar titles, "why?" answers and budget tips in natural language. The engine keeps making every decision.
